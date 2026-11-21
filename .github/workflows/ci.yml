@@ -29,24 +29,31 @@ jobs:
     steps:
       - uses: actions/checkout@v7   # Node 24
 
-      # Cross toolchains from Ubuntu's own packages, cached between runs (composite action,
-      # uses actions/cache v6 = Node 24). Bump "version" to force a fresh install.
+      # Cortex-M: the official Arm GNU Toolchain (with newlib), cached by the action itself (Node 24).
+      # Not from apt: Ubuntu wires the newlib headers in via update-alternatives in a postinst script,
+      # which a cache restore does not run (string.h not found).
+      - uses: carlosperate/arm-none-eabi-gcc-action@v1.9.1
+        with:
+          release: '13.2.Rel1'
+
+      # AVR and the Linux cross compilers from Ubuntu's packages, cached between runs (composite
+      # action, uses actions/cache v6 = Node 24). None of them needs a postinst script.
+      # Bump "version" to force a fresh install.
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: >-
             gcc-avr avr-libc binutils-avr
-            gcc-arm-none-eabi libnewlib-arm-none-eabi libnewlib-dev binutils-arm-none-eabi
             gcc-aarch64-linux-gnu libc6-dev-arm64-cross
             gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
             gcc-i686-linux-gnu libc6-dev-i386-cross
-          # libnewlib-dev (newlib headers) is listed explicitly: as a mere dependency it was missing
-          # after a cache restore (string.h not found on the Cortex-M targets).
-          version: "2"
+          version: "3"
 
       - name: Toolchain versions
         run: |
-          # fail early with a clear message if a restore left out headers
-          test -f /usr/include/newlib/string.h && test -f /usr/lib/avr/include/string.h
+          # fail early with a clear message if a toolchain can't find its C library headers
+          for c in avr-gcc arm-none-eabi-gcc aarch64-linux-gnu-gcc arm-linux-gnueabihf-gcc i686-linux-gnu-gcc; do
+            echo '#include <string.h>' | $c -x c -fsyntax-only - || { echo "::error::$c: no libc headers"; exit 1; }
+          done
           for c in gcc avr-gcc arm-none-eabi-gcc aarch64-linux-gnu-gcc arm-linux-gnueabihf-gcc i686-linux-gnu-gcc; do
             printf '%-26s %s\n' "$c" "$($c --version | head -1)" | tee -a "$GITHUB_STEP_SUMMARY"
           done
