@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6   # Node 24
-      - uses: actions/setup-go@v6   # Node 24
+      - uses: actions/setup-go@v7   # Node 24
         with:
           go-version-file: go.mod
           cache: false   # keine Abhaengigkeiten
