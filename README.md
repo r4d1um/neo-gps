@@ -82,23 +82,26 @@ The library lives publicly in [`r4d1um/neo-gps`](https://github.com/r4d1um/neo-g
 
 For each target there is `neo_gps-<version>-<target>.tar.gz` with `lib/libneo_gps.a` and `include/`. Checksums are in `SHA256SUMS` on the same release.
 
-| Target | Toolchain (from [r4d1um/setup](https://github.com/r4d1um/setup) v1.2.0) | Flags | For |
+| Target | Toolchain (Ubuntu 24.04 package) | Flags | For |
 |---|---|---|---|
-| `linux-x86_64` | runner's gcc (Ubuntu 24.04) | `-O2 -fPIC` | PC |
-| `linux-i686` | i686-linux-gnu 12.5.0, glibc 2.36 | `-O2 -fPIC` | 32-bit PC, netbook |
-| `linux-aarch64` | aarch64-linux-gnu 12.5.0, glibc 2.36 | `-O2 -fPIC` | Pi 3/4/5 with 64-bit OS |
-| `linux-armv6hf` | arm-linux-gnueabihf 12.5.0, glibc 2.36 | `-march=armv6+fp -mfpu=vfp -mfloat-abi=hard -marm` | every Pi with a 32-bit OS (including Pi 1 / Zero) |
-| `avr-atmega328p` | avr-gcc 7.3.0 | `-Os -mmcu=atmega328p` | Arduino Uno/Nano/Pro Mini |
-| `cortex-m0` | arm-none-eabi 13.2.rel1 | `-Os -mcpu=cortex-m0 -mthumb` | STM32F0 |
+| `linux-x86_64` | gcc 13.3 (`gcc`) | `-O2 -fPIC` | PC |
+| `linux-i686` | gcc 13.3 (`gcc-i686-linux-gnu`) | `-O2 -fPIC` | 32-bit PC |
+| `linux-aarch64` | gcc 13.3 (`gcc-aarch64-linux-gnu`) | `-O2 -fPIC` | Pi 3/4/5 with 64-bit OS |
+| `linux-armv6hf` | gcc 13.3 (`gcc-arm-linux-gnueabihf`) | `-march=armv6+fp -mfpu=vfp -mfloat-abi=hard -marm` | every Pi with a 32-bit OS (including Pi 1 / Zero) |
+| `avr-atmega328p` | avr-gcc 7.3.0 (`gcc-avr`) | `-Os -mmcu=atmega328p` | Arduino Uno/Nano/Pro Mini |
+| `cortex-m0` | arm-none-eabi 13.2.rel1 (`gcc-arm-none-eabi`) | `-Os -mcpu=cortex-m0 -mthumb` | STM32F0 |
 | `cortex-m0plus` | arm-none-eabi 13.2.rel1 | `-Os -mcpu=cortex-m0plus -mthumb` | RP2040 (Pico / Pico W) |
 | `cortex-m3` | arm-none-eabi 13.2.rel1 | `-Os -mcpu=cortex-m3 -mthumb` | STM32F1 |
 | `cortex-m4f` | arm-none-eabi 13.2.rel1 | `-Os -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16` | STM32F4 |
 | `cortex-m33` | arm-none-eabi 13.2.rel1 | `-Os -mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16` | RP2350 (Pico 2) |
 
+The Linux libraries only use basic libc/libm functions (no symbols newer than glibc 2.17), so they link on
+Raspberry Pi OS, Debian, Ubuntu and other current distributions.
+
 All MCU targets are built with `-ffunction-sections -fdata-sections`; link with `-Wl,--gc-sections` and the linker only pulls in what you use. The float ABI must match your project (`cortex-m4f`/`m33` are hard-float).
 
 ```sh
-V=1.2.1 T=cortex-m0plus
+V=1.2.4 T=cortex-m0plus
 curl -fsSLO https://github.com/r4d1um/neo-gps/releases/download/v$V/neo_gps-$V-$T.tar.gz
 curl -fsSL  https://github.com/r4d1um/neo-gps/releases/download/v$V/SHA256SUMS | grep "$T.tar.gz" | sha256sum -c
 tar -xzf neo_gps-$V-$T.tar.gz -C third_party/
@@ -113,16 +116,25 @@ There is no binary for Xtensa (ESP32/ESP8266) yet; there, and when you change co
 
 | Environment | How |
 |---|---|
-| PlatformIO | `lib_deps = https://github.com/r4d1um/neo-gps/releases/download/v1.2.1/neo_gps-1.2.1-src.tar.gz` |
+| PlatformIO | `lib_deps = https://github.com/r4d1um/neo-gps/releases/download/v1.2.4/neo_gps-1.2.4-src.tar.gz` |
 | Arduino IDE / arduino-cli | unpack the archive to `~/Arduino/libraries/neo_gps` |
 | ESP-IDF | unpack the archive to `components/neo_gps` (`CMakeLists.txt` detects IDF) |
-| CMake (Pico SDK, Zephyr, STM32CubeIDE) | unpack, `add_subdirectory(neo_gps-1.2.1-src)` + `target_link_libraries(app neo_gps)` |
+| CMake (Pico SDK, Zephyr, STM32CubeIDE) | unpack, `add_subdirectory(neo_gps-1.2.4-src)` + `target_link_libraries(app neo_gps)` |
 
 Always pin the version. `neo_gps_util.c/.h` (distance, bearing) needs `math.h`; `neo_gps_time.c/.h` (local time, Unix time) does not.
 
 ### Building it yourself
 
-`tools/session-setup.sh` installs the cross toolchains. Then `make test`, `make dist` (missing compilers are skipped, `DIST_STRICT=1` turns that into an error), `make dist-check` links tests and a firmware against the finished `.a` files, `make package` creates the release packages in `build/pkg/`.
+On Debian/Ubuntu the cross toolchains are plain packages (the same ones CI uses):
+
+```sh
+sudo apt-get install --no-install-recommends gcc-avr avr-libc binutils-avr \
+  gcc-arm-none-eabi libnewlib-arm-none-eabi binutils-arm-none-eabi \
+  gcc-aarch64-linux-gnu libc6-dev-arm64-cross gcc-arm-linux-gnueabihf libc6-dev-armhf-cross \
+  gcc-i686-linux-gnu libc6-dev-i386-cross cmake
+```
+
+Then `make test`, `make dist` (missing compilers are skipped, `DIST_STRICT=1` turns that into an error), `make dist-check` links tests and a firmware against the finished `.a` files, `make package` creates the release packages in `build/pkg/`.
 
 ## Recommended configuration
 

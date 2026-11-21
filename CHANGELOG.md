@@ -5,6 +5,12 @@ Every version is published as release `v<version>` in
 [r4d1um/neo-gps](https://github.com/r4d1um/neo-gps/releases)
 (up to 1.2.0: `c/neo_gps/v<version>` in r4d1um/iot-lib-public).
 
+## 1.2.4
+
+- Built with Ubuntu 24.04's cross toolchains (GitHub Actions, cached apt packages) instead of the owner's
+  r4d1um/setup bootstrap: the repo is now fully self-contained. Linux targets now use GCC 13.3 (was 12.5);
+  AVR and Cortex-M compilers are unchanged. The libraries still only need glibc 2.17+. Code and API unchanged.
+
 ## 1.2.3
 
 - README: disclaimer (no warranty, not for safety-critical navigation on its own).
