@@ -1,46 +1,46 @@
 # neo_gps
 
-Schlanke, schnelle C-Library für die u-blox-GPS-Module
+Lean, fast C library for u-blox GPS modules
 
-| Modul | Chip | Max. Rate | UBX-Navigation |
+| Module | Chip | Max. rate | UBX navigation |
 |---|---|---|---|
-| GY-GPSV3-NEO | **NEO-M8N-0-01** (u-blox M8) | 10 Hz | NAV-PVT (92 Byte) |
-| GY-GPSV3-NEO / HW-448 | **NEO-7M-0-000** (u-blox 7) | 10 Hz | NAV-PVT (84 Byte) |
-| GY-NEO6MV2 u. ä. | **NEO-6M-0-001** (u-blox 6) | 5 Hz | POSLLH + VELNED + TIMEUTC + SOL |
+| GY-GPSV3-NEO | **NEO-M8N-0-01** (u-blox M8) | 10 Hz | NAV-PVT (92 bytes) |
+| GY-GPSV3-NEO / HW-448 | **NEO-7M-0-000** (u-blox 7) | 10 Hz | NAV-PVT (84 bytes) |
+| GY-NEO6MV2 and similar | **NEO-6M-0-001** (u-blox 6) | 5 Hz | POSLLH + VELNED + TIMEUTC + SOL |
 
-Alle drei haben dieselben Anschlüsse (VCC, RX, TX, GND) und starten mit **9600 Baud, NMEA**.
+All three have the same pins (VCC, RX, TX, GND) and start at **9600 baud, NMEA**.
 
-## Warum diese Library
+## Why this library
 
-- **Zwei Dateien** (`neo_gps.c` + `neo_gps.h`), reines C99, kein `malloc`, kein `printf`/`scanf`.
-- **Streaming-Parser**: jedes Byte wird sofort verarbeitet, kein Zeilenpuffer. NMEA und UBX dürfen im selben Datenstrom gemischt sein.
-- **Kein Float im Parser**: Koordinaten in 1e-7 Grad, Höhe in mm, Geschwindigkeit in mm/s, verlustfrei und schnell auch auf AVR und Cortex-M0.
-- **Werte werden erst bei korrekter Prüfsumme übernommen**, kaputte oder abgeschnittene Sätze ändern nichts.
-- **Optionaler Sprungfilter** gegen Multipath-Ausreißer und Wandern im Stand, ebenfalls rein ganzzahlig.
-- **Ortszeit mit Zeitzone und Sommerzeit** (z. B. Berlin MEZ/MESZ), ohne Zeitzonen-Datenbank.
-- **Hardware-unabhängig**: du gibst Bytes rein und eine Sende-Funktion mit. Läuft auf Arduino, ESP32, STM32, RP2040, Linux …
-- **UBX-Konfiguration** eingebaut: Baudrate, Messrate, Ausgabeprofile, Dynamikmodell, Power-Save, Speichern, Reset, automatische Modellerkennung.
+- **Two files** (`neo_gps.c` + `neo_gps.h`), plain C99, no `malloc`, no `printf`/`scanf`.
+- **Streaming parser**: every byte is processed immediately, no line buffer. NMEA and UBX may be mixed in the same stream.
+- **No float in the parser**: coordinates in 1e-7 degrees, altitude in mm, speed in mm/s; lossless and fast even on AVR and Cortex-M0.
+- **Values are only taken over when the checksum is correct**; broken or truncated sentences change nothing.
+- **Optional jump filter** against multipath outliers and drifting while standing still, also integer-only.
+- **Local time with time zone and daylight saving time** (e.g. Berlin CET/CEST), without a time zone database.
+- **Hardware-independent**: you feed in bytes and pass a send function. Runs on Arduino, ESP32, STM32, RP2040, Linux …
+- **UBX configuration** built in: baud rate, measurement rate, output profiles, dynamic model, power save, save, reset, automatic model detection.
 
 | | ATmega328P | Cortex-M0 | Cortex-M4 |
 |---|---|---|---|
-| Flash (komplett) | 6,9 KB | 4,6 KB | 4,4 KB |
-| Flash (nur NMEA, `NEO_GPS_ENABLE_UBX=0`) | 3,5 KB | – | – |
-| + Sprungfilter (nur wenn benutzt) | +3,7 KB | +1,3 KB | +1,1 KB |
-| + Ortszeit (nur wenn benutzt; + TZ-String-Parser) | +2,3 KB (+1,2 KB) | – | +0,8 KB (+0,6 KB) |
-| RAM (`neo_gps_t`) | 324 Byte | 340 Byte | 340 Byte |
+| Flash (complete) | 6.9 KB | 4.6 KB | 4.4 KB |
+| Flash (NMEA only, `NEO_GPS_ENABLE_UBX=0`) | 3.5 KB | – | – |
+| + jump filter (only if used) | +3.7 KB | +1.3 KB | +1.1 KB |
+| + local time (only if used; + TZ string parser) | +2.3 KB (+1.2 KB) | – | +0.8 KB (+0.6 KB) |
+| RAM (`neo_gps_t`) | 324 bytes | 340 bytes | 340 bytes |
 
-Auf einem PC parst sie rund 190 MB/s NMEA; das Modul liefert bei 115200 Baud höchstens 11,5 KB/s.
+On a PC it parses about 190 MB/s of NMEA; at 115200 baud the module delivers at most 11.5 KB/s.
 
-## Verkabelung
+## Wiring
 
 ```
-Modul TX  ->  MCU RX
-Modul RX  ->  MCU TX     (bei 5-V-MCUs Spannungsteiler auf 3,3 V empfohlen)
-VCC       ->  3,3 V oder 5 V (Boards haben einen Regler)
-GND       ->  GND
+Module TX  ->  MCU RX
+Module RX  ->  MCU TX     (with 5 V MCUs a voltage divider to 3.3 V is recommended)
+VCC        ->  3.3 V or 5 V (the boards have a regulator)
+GND        ->  GND
 ```
 
-## Schnellstart
+## Quick start
 
 ```c
 #include "neo_gps.h"
@@ -49,12 +49,12 @@ static neo_gps_t gps;
 
 static void uart_tx(void *user, const uint8_t *data, uint16_t len)
 {
-    my_uart_write(data, len);          /* deine UART-Funktion */
+    my_uart_write(data, len);          /* your UART function */
 }
 
 int main(void)
 {
-    neo_gps_init(&gps, uart_tx, NULL); /* uart_tx darf NULL sein = nur Empfang */
+    neo_gps_init(&gps, uart_tx, NULL); /* uart_tx may be NULL = receive only */
 
     for (;;) {
         while (my_uart_available())
@@ -62,32 +62,32 @@ int main(void)
 
         if (neo_gps_updates(&gps) & NEO_UPD_POSITION) {
             const neo_gps_data_t *d = neo_gps_data(&gps);
-            /* d->lat, d->lon     1e-7 Grad   (481173230 = 48.1173230°)
+            /* d->lat, d->lon     1e-7 degrees (481173230 = 48.1173230°)
                d->alt_msl         mm
                d->speed           mm/s
-               d->course          1e-5 Grad
+               d->course          1e-5 degrees
                d->time.hour ...   UTC                                      */
         }
     }
 }
 ```
 
-Statt Polling kannst du auch auf den Rückgabewert von `neo_gps_feed()` reagieren (`NEO_EV_NMEA_RMC`, `NEO_EV_UBX_NAV_PVT`, …).
+Instead of polling you can also react to the return value of `neo_gps_feed()` (`NEO_EV_NMEA_RMC`, `NEO_EV_UBX_NAV_PVT`, …).
 
-## Einbinden
+## Using it in a project
 
-Die Library liegt öffentlich in [`r4d1um/neo-gps`](https://github.com/r4d1um/neo-gps). GitHub Actions testet sie, baut alle Ziele einmal und veröffentlicht jede Version als Release **`v<version>`** ([Releases](https://github.com/r4d1um/neo-gps/releases)). Projekte holen sich das fertige Paket und kopieren keinen Quellcode.
+The library lives publicly in [`r4d1um/neo-gps`](https://github.com/r4d1um/neo-gps). GitHub Actions tests it, builds all targets once and publishes every version as release **`v<version>`** ([releases](https://github.com/r4d1um/neo-gps/releases)). Projects fetch the finished package instead of copying source code.
 
-### Fertige Binaries (bevorzugt)
+### Prebuilt binaries (preferred)
 
-Pro Ziel gibt es `neo_gps-<version>-<ziel>.tar.gz` mit `lib/libneo_gps.a` und `include/`. Prüfsummen stehen in `SHA256SUMS` am selben Release.
+For each target there is `neo_gps-<version>-<target>.tar.gz` with `lib/libneo_gps.a` and `include/`. Checksums are in `SHA256SUMS` on the same release.
 
-| Ziel | Toolchain (aus [r4d1um/setup](https://github.com/r4d1um/setup) v1.2.0) | Flags | Für |
+| Target | Toolchain (from [r4d1um/setup](https://github.com/r4d1um/setup) v1.2.0) | Flags | For |
 |---|---|---|---|
-| `linux-x86_64` | gcc des Runners (Ubuntu 24.04) | `-O2 -fPIC` | PC |
-| `linux-i686` | i686-linux-gnu 12.5.0, glibc 2.36 | `-O2 -fPIC` | 32-Bit-PC, Netbook |
-| `linux-aarch64` | aarch64-linux-gnu 12.5.0, glibc 2.36 | `-O2 -fPIC` | Pi 3/4/5 mit 64-Bit-OS |
-| `linux-armv6hf` | arm-linux-gnueabihf 12.5.0, glibc 2.36 | `-march=armv6+fp -mfpu=vfp -mfloat-abi=hard -marm` | alle Pi mit 32-Bit-OS (auch Pi 1 / Zero) |
+| `linux-x86_64` | runner's gcc (Ubuntu 24.04) | `-O2 -fPIC` | PC |
+| `linux-i686` | i686-linux-gnu 12.5.0, glibc 2.36 | `-O2 -fPIC` | 32-bit PC, netbook |
+| `linux-aarch64` | aarch64-linux-gnu 12.5.0, glibc 2.36 | `-O2 -fPIC` | Pi 3/4/5 with 64-bit OS |
+| `linux-armv6hf` | arm-linux-gnueabihf 12.5.0, glibc 2.36 | `-march=armv6+fp -mfpu=vfp -mfloat-abi=hard -marm` | every Pi with a 32-bit OS (including Pi 1 / Zero) |
 | `avr-atmega328p` | avr-gcc 7.3.0 | `-Os -mmcu=atmega328p` | Arduino Uno/Nano/Pro Mini |
 | `cortex-m0` | arm-none-eabi 13.2.rel1 | `-Os -mcpu=cortex-m0 -mthumb` | STM32F0 |
 | `cortex-m0plus` | arm-none-eabi 13.2.rel1 | `-Os -mcpu=cortex-m0plus -mthumb` | RP2040 (Pico / Pico W) |
@@ -95,7 +95,7 @@ Pro Ziel gibt es `neo_gps-<version>-<ziel>.tar.gz` mit `lib/libneo_gps.a` und `i
 | `cortex-m4f` | arm-none-eabi 13.2.rel1 | `-Os -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16` | STM32F4 |
 | `cortex-m33` | arm-none-eabi 13.2.rel1 | `-Os -mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16` | RP2350 (Pico 2) |
 
-Alle MCU-Ziele mit `-ffunction-sections -fdata-sections`; linke mit `-Wl,--gc-sections`, dann holt der Linker nur, was du benutzt. Die Float-ABI muss zu deinem Projekt passen (`cortex-m4f`/`m33` sind hard-float).
+All MCU targets are built with `-ffunction-sections -fdata-sections`; link with `-Wl,--gc-sections` and the linker only pulls in what you use. The float ABI must match your project (`cortex-m4f`/`m33` are hard-float).
 
 ```sh
 V=1.2.1 T=cortex-m0plus
@@ -107,73 +107,73 @@ tar -xzf neo_gps-$V-$T.tar.gz -C third_party/
 # gcc:   -Ithird_party/neo_gps-$V-$T/include third_party/neo_gps-$V-$T/lib/libneo_gps.a -lm
 ```
 
-### Quellpaket (für ESP32/ESP8266, PlatformIO, Arduino, ESP-IDF)
+### Source package (for ESP32/ESP8266, PlatformIO, Arduino, ESP-IDF)
 
-Für Xtensa (ESP32/ESP8266) gibt es noch kein Binary; dort und wenn du Compile-Schalter wie `NEO_GPS_ENABLE_UBX=0` änderst, nimmst du `neo_gps-<version>-src.tar.gz` vom selben Release:
+There is no binary for Xtensa (ESP32/ESP8266) yet; there, and when you change compile switches such as `NEO_GPS_ENABLE_UBX=0`, use `neo_gps-<version>-src.tar.gz` from the same release:
 
-| Umgebung | So geht's |
+| Environment | How |
 |---|---|
 | PlatformIO | `lib_deps = https://github.com/r4d1um/neo-gps/releases/download/v1.2.1/neo_gps-1.2.1-src.tar.gz` |
-| Arduino IDE / arduino-cli | Archiv nach `~/Arduino/libraries/neo_gps` entpacken |
-| ESP-IDF | Archiv nach `components/neo_gps` entpacken (`CMakeLists.txt` erkennt IDF) |
-| CMake (Pico-SDK, Zephyr, STM32CubeIDE) | entpacken, `add_subdirectory(neo_gps-1.2.1-src)` + `target_link_libraries(app neo_gps)` |
+| Arduino IDE / arduino-cli | unpack the archive to `~/Arduino/libraries/neo_gps` |
+| ESP-IDF | unpack the archive to `components/neo_gps` (`CMakeLists.txt` detects IDF) |
+| CMake (Pico SDK, Zephyr, STM32CubeIDE) | unpack, `add_subdirectory(neo_gps-1.2.1-src)` + `target_link_libraries(app neo_gps)` |
 
-Version immer fest pinnen. `neo_gps_util.c/.h` (Entfernung, Peilung) braucht `math.h`; `neo_gps_time.c/.h` (Ortszeit, Unix-Zeit) kommt ohne aus.
+Always pin the version. `neo_gps_util.c/.h` (distance, bearing) needs `math.h`; `neo_gps_time.c/.h` (local time, Unix time) does not.
 
-### Selbst bauen
+### Building it yourself
 
-`tools/session-setup.sh` installiert die Cross-Toolchains. Danach `make test`, `make dist` (fehlende Compiler werden übersprungen, `DIST_STRICT=1` macht daraus einen Fehler), `make dist-check` linkt Tests und eine Firmware gegen die fertigen `.a`, `make package` erzeugt die Release-Pakete in `build/pkg/`.
+`tools/session-setup.sh` installs the cross toolchains. Then `make test`, `make dist` (missing compilers are skipped, `DIST_STRICT=1` turns that into an error), `make dist-check` links tests and a firmware against the finished `.a` files, `make package` creates the release packages in `build/pkg/`.
 
-## Empfohlene Konfiguration
+## Recommended configuration
 
-**Einfach (NMEA, reicht für fast alles):**
+**Simple (NMEA, enough for almost everything):**
 
 ```c
-neo_gps_cfg_output(&gps, NEO_OUT_NMEA_MINIMAL);   /* nur RMC + GGA + GSA */
-neo_gps_cfg_dynmodel(&gps, NEO_DYN_PEDESTRIAN);   /* oder AUTOMOTIVE, AIR_1G ... */
+neo_gps_cfg_output(&gps, NEO_OUT_NMEA_MINIMAL);   /* only RMC + GGA + GSA */
+neo_gps_cfg_dynmodel(&gps, NEO_DYN_PEDESTRIAN);   /* or AUTOMOTIVE, AIR_1G ... */
 ```
 
-**Maximal effizient (UBX binär, 115200 Baud, 10 Hz):**
+**Most efficient (UBX binary, 115200 baud, 10 Hz):**
 
 ```c
-neo_gps_detect_model(&gps);                        /* MON-VER, Antwort -> NEO_EV_UBX_MON_VER */
-/* ... auf das Event warten ... */
-neo_gps_cfg_port(&gps, 115200, NEO_PROTO_UBX);     /* danach eigene UART auf 115200 */
-neo_gps_cfg_output(&gps, NEO_OUT_UBX);             /* wählt passende Nachrichten fürs Modell */
+neo_gps_detect_model(&gps);                        /* MON-VER, answer -> NEO_EV_UBX_MON_VER */
+/* ... wait for the event ... */
+neo_gps_cfg_port(&gps, 115200, NEO_PROTO_UBX);     /* then switch your own UART to 115200 */
+neo_gps_cfg_output(&gps, NEO_OUT_UBX);             /* picks the right messages for the model */
 neo_gps_cfg_rate(&gps, 100);                       /* 10 Hz (NEO-6M: 200 = 5 Hz) */
-neo_gps_cfg_save(&gps);                            /* optional dauerhaft speichern */
+neo_gps_cfg_save(&gps);                            /* optionally save permanently */
 ```
 
-Im UBX-Modus bekommst du zusätzlich Genauigkeitsschätzungen (`h_acc`, `v_acc`, `s_acc` in mm bzw. mm/s), die NED-Geschwindigkeit (`vel_n/e/d`) und die GPS-Zeit (`itow`).
+In UBX mode you additionally get accuracy estimates (`h_acc`, `v_acc`, `s_acc` in mm and mm/s), the NED velocity (`vel_n/e/d`) and the GPS time of week (`itow`).
 
-Hinweis zu `cfg_save`: Die NEO-6M/7M-Boards speichern im batteriegepufferten RAM bzw. EEPROM. Ist die Knopfzelle leer, startet das Modul wieder mit Werkseinstellungen.
+Note on `cfg_save`: the NEO-6M/7M boards save to battery-backed RAM or EEPROM. If the coin cell is empty, the module starts with factory settings again.
 
-## Sprungfilter (GPS-Jumps)
+## Jump filter (GPS jumps)
 
-Einzelne Positionen springen gerne mal 20–200 m daneben, besonders zwischen Häusern (Multipath), unter Bäumen oder direkt nach dem Fix. Der Filter ist standardmäßig aus und wird mit einer Zeile aktiviert:
+Single positions often jump 20–200 m off, especially between buildings (multipath), under trees or right after the fix. The filter is off by default and is enabled with one line:
 
 ```c
 neo_gps_filter_preset(&gps, NEO_FILTER_PEDESTRIAN);   /* AUTOMOTIVE, AIRBORNE, STATIONARY, OFF */
-neo_gps_cfg_dynmodel(&gps, NEO_DYN_PEDESTRIAN);       /* passend dazu im Modul (empfohlen)  */
+neo_gps_cfg_dynmodel(&gps, NEO_DYN_PEDESTRIAN);       /* matching model in the module (recommended) */
 ```
 
-Danach sind `data.lat`/`data.lon` die gefilterte Position, die Rohwerte stehen in `data.raw_lat`/`data.raw_lon`. Eine verworfene Position setzt `NEO_UPD_REJECTED` statt `NEO_UPD_POSITION`; `data.reject_reason` sagt warum, `data.rejected` zählt mit. Bei verworfener Position wird auch die Höhe nicht übernommen.
+After that `data.lat`/`data.lon` are the filtered position; the raw values are in `data.raw_lat`/`data.raw_lon`. A rejected position sets `NEO_UPD_REJECTED` instead of `NEO_UPD_POSITION`; `data.reject_reason` says why, `data.rejected` counts them. With a rejected position the altitude is not taken over either.
 
-So arbeitet er, einmal pro Messung:
+How it works, once per measurement:
 
-1. **Qualität**: gültiger Fix, Fix-Typ, Satellitenzahl, HDOP und (im UBX-Modus) die Genauigkeitsschätzung `h_acc` des Moduls.
-2. **Sprungtest**: Die Strecke seit der letzten guten Position wird mit dem verglichen, was physikalisch möglich ist: 1,5 × Geschwindigkeit × Zeit + max. Beschleunigung × Zeit² + Toleranz + 2 × `h_acc`. Die Geschwindigkeit misst das Modul per Doppler, unabhängig von der Position, deshalb fällt ein Sprung auch während der Fahrt auf. Nach einer längeren Lücke (Tunnel) wächst die erlaubte Strecke automatisch mit.
-3. **Neu verankern**: Kommen mehrmals hintereinander „Sprünge“ zur selben Stelle, war die alte Position falsch. Der Filter übernimmt dann die neue, statt ewig festzuhängen.
-4. **Glätten im Stand**: Unterhalb der Stillstandsgeschwindigkeit wird die Position exponentiell geglättet, das typische Wandern um ein paar Meter verschwindet. In Bewegung wird nicht geglättet, es entsteht also keine Verzögerung.
+1. **Quality**: valid fix, fix type, number of satellites, HDOP and (in UBX mode) the module's accuracy estimate `h_acc`.
+2. **Jump test**: the distance since the last good position is compared with what is physically possible: 1.5 × speed × time + max. acceleration × time² + margin + 2 × `h_acc`. The module measures speed via Doppler, independently of the position, so a jump is also caught while driving. After a longer gap (tunnel) the allowed distance grows automatically.
+3. **Re-anchoring**: if several "jumps" in a row land at the same place, the old position was wrong. The filter then takes over the new one instead of staying stuck forever.
+4. **Smoothing while standing still**: below the standstill speed the position is smoothed exponentially, so the typical drift of a few metres disappears. Nothing is smoothed while moving, so there is no lag.
 
-| Preset | min. Satelliten | max. HDOP | max. `h_acc` | Beschleunigung | Toleranz | neu verankern | Glättung im Stand |
+| Preset | min. satellites | max. HDOP | max. `h_acc` | acceleration | margin | re-anchor | smoothing at standstill |
 |---|---|---|---|---|---|---|---|
-| `PEDESTRIAN` | 5 | 4,0 | 25 m | 3 m/s² | 10 m | nach 5 | 1/4, unter 0,3 m/s |
-| `AUTOMOTIVE` | 5 | 5,0 | 30 m | 8 m/s² | 15 m | nach 5 | 1/4, unter 0,5 m/s |
-| `AIRBORNE` | 6 | 3,0 | 20 m | 20 m/s² | 10 m | nach 3 | 1/2, unter 0,2 m/s |
-| `STATIONARY` | 6 | 3,0 | 15 m | 1 m/s² | 5 m | nach 10 | 1/16, unter 1 m/s |
+| `PEDESTRIAN` | 5 | 4.0 | 25 m | 3 m/s² | 10 m | after 5 | 1/4, below 0.3 m/s |
+| `AUTOMOTIVE` | 5 | 5.0 | 30 m | 8 m/s² | 15 m | after 5 | 1/4, below 0.5 m/s |
+| `AIRBORNE` | 6 | 3.0 | 20 m | 20 m/s² | 10 m | after 3 | 1/2, below 0.2 m/s |
+| `STATIONARY` | 6 | 3.0 | 15 m | 1 m/s² | 5 m | after 10 | 1/16, below 1 m/s |
 
-Alle Presets verlangen einen 3D-Fix. Eigene Werte gehen mit `neo_gps_filter_config()`; jeder Grenzwert `0` schaltet die jeweilige Prüfung ab:
+All presets require a 3D fix. Your own values go through `neo_gps_filter_config()`; any limit set to `0` disables that check:
 
 ```c
 neo_filter_cfg_t f = {
@@ -182,119 +182,119 @@ neo_filter_cfg_t f = {
     .smooth_shift = 3, .static_speed = 300,
 };
 neo_gps_filter_config(&gps, &f);
-neo_gps_filter_reset(&gps);   /* Referenz vergessen, z.B. nach Transport im ausgeschalteten Zustand */
+neo_gps_filter_reset(&gps);   /* forget the reference, e.g. after being carried while switched off */
 ```
 
-Der Filter steckt in `neo_gps_filter.c` und wird nur gelinkt, wenn du `neo_gps_filter_*` aufrufst. Mit `NEO_GPS_ENABLE_FILTER=0` entfallen auch die Felder im RAM.
+The filter lives in `neo_gps_filter.c` and is only linked when you call `neo_gps_filter_*`. With `NEO_GPS_ENABLE_FILTER=0` its fields in RAM go away as well.
 
-## Ortszeit (Zeitzone + Sommerzeit)
+## Local time (time zone + daylight saving time)
 
-Das GPS liefert UTC. `neo_gps_time.h` rechnet daraus die Ortszeit, Sommerzeit inklusive:
+The GPS delivers UTC. `neo_gps_time.h` turns it into local time, daylight saving time included:
 
 ```c
 #include "neo_gps_time.h"
 
-static const neo_tz_t berlin = NEO_TZ_BERLIN;      /* MEZ / MESZ */
+static const neo_tz_t berlin = NEO_TZ_BERLIN;      /* CET / CEST */
 
 neo_local_time_t lt;
 if (neo_gps_local_time(neo_gps_data(&gps), &berlin, &lt)) {
-    /* lt.t.year, .month, .day, .hour, .minute, .second, .ms   -> Ortszeit
-       lt.weekday  0 = Sonntag
-       lt.is_dst   1 = Sommerzeit (MESZ)
-       lt.offset_min  60 bzw. 120                                         */
+    /* lt.t.year, .month, .day, .hour, .minute, .second, .ms   -> local time
+       lt.weekday  0 = Sunday
+       lt.is_dst   1 = daylight saving time (CEST)
+       lt.offset_min  60 or 120                                           */
 }
 ```
 
-Für Berlin gilt die EU-Regel: Sommerzeit vom letzten Sonntag im März 02:00 MEZ bis zum letzten Sonntag im Oktober 03:00 MESZ. Fertig dabei sind `NEO_TZ_BERLIN` (= `NEO_TZ_CET`, gilt für ganz Mitteleuropa), `NEO_TZ_LONDON`, `NEO_TZ_HELSINKI` und `NEO_TZ_UTC`.
+Berlin follows the EU rule: daylight saving time from the last Sunday in March at 02:00 CET to the last Sunday in October at 03:00 CEST. Built in are `NEO_TZ_BERLIN` (= `NEO_TZ_CET`, valid for all of Central Europe), `NEO_TZ_LONDON`, `NEO_TZ_HELSINKI` and `NEO_TZ_UTC`.
 
-Jede andere Zeitzone geht über den üblichen POSIX-TZ-String, denselben wie bei Linux oder dem ESP32:
+Any other time zone works via the usual POSIX TZ string, the same as on Linux or the ESP32:
 
 ```c
 neo_tz_t tz;
 neo_tz_parse(&tz, "EST5EDT,M3.2.0,M11.1.0");        /* New York */
-neo_tz_parse(&tz, "AEST-10AEDT,M10.1.0,M4.1.0/3");  /* Sydney (Sommerzeit über Neujahr) */
-neo_tz_parse(&tz, "IST-5:30");                      /* Indien, keine Sommerzeit */
+neo_tz_parse(&tz, "AEST-10AEDT,M10.1.0,M4.1.0/3");  /* Sydney (DST across New Year) */
+neo_tz_parse(&tz, "IST-5:30");                      /* India, no DST */
 ```
 
-Unterstützt werden Regeln im Format `Mm.w.d[/Uhrzeit]`, also fast alle Zonen. Namen aus der Zeitzonen-Datenbank wie `Europe/Berlin` gehen nicht; den passenden POSIX-String findest du zu jeder Zone in `/usr/share/zoneinfo` (letzte Zeile der Datei) oder in den gängigen Tabellen für ESP32/`setenv("TZ", …)`.
+Rules in the format `Mm.w.d[/time]` are supported, which covers almost all zones. Time zone database names such as `Europe/Berlin` do not work; you find the matching POSIX string for any zone in `/usr/share/zoneinfo` (last line of the file) or in the common tables for ESP32/`setenv("TZ", …)`.
 
-Gerechnet wird rein ganzzahlig und ohne libc-`time.h`, gültig für 1970–2105. Die Tests vergleichen die Umrechnung für acht Zonen, darunter Halbstunden-Sommerzeit, Umschalten um „24:00“ und negative Umschaltzeiten, mit der glibc über 1971–2105, minutengenau um jede Umschaltung.
+All calculations are integer-only and without libc `time.h`, valid for 1970–2105. The tests compare the conversion for eight zones, including half-hour DST, switching at "24:00" and negative switch times, against glibc over 1971–2105, to the minute around every switch.
 
-Bausteine für eigene Zwecke: `neo_gps_unix_time()`, `neo_tz_utc_to_local()`, `neo_time_from_unix()`, `neo_time_to_unix()`.
+Building blocks for your own use: `neo_gps_unix_time()`, `neo_tz_utc_to_local()`, `neo_time_from_unix()`, `neo_time_to_unix()`.
 
-Hinweis: Direkt nach einem Kaltstart kennt das Modul die aktuellen Schaltsekunden noch nicht und nimmt den Wert aus seiner Firmware. Bei älteren Firmwares (vor allem NEO-6M) kann die UTC-Zeit dann einige Sekunden danebenliegen, bis nach spätestens rund 12,5 Minuten die UTC-Parameter empfangen sind.
+Note: right after a cold start the module does not know the current leap seconds yet and uses the value from its firmware. With older firmware (NEO-6M in particular) the UTC time can then be a few seconds off until the UTC parameters have been received, after about 12.5 minutes at most.
 
-## API-Übersicht
+## API overview
 
-### Kern
+### Core
 
-| Funktion | |
+| Function | |
 |---|---|
-| `neo_gps_init(gps, write, user)` | Initialisieren |
-| `neo_gps_feed(gps, byte)` | Ein Byte verarbeiten → `neo_event_t` (ISR-tauglich) |
-| `neo_gps_feed_buf(gps, buf, len)` | Puffer verarbeiten → Anzahl gültiger Nachrichten |
-| `neo_gps_updates(gps)` | `NEO_UPD_*`-Bits seit letztem Aufruf (setzt zurück) |
-| `neo_gps_data(gps)` | Zeiger auf `neo_gps_data_t` |
-| `neo_gps_has_fix(gps)` | Position gültig? |
-| `neo_gps_lat_deg/lon_deg/alt_m/speed_kmh/course_deg` | Float-Komfortfunktionen |
-| `neo_gps_set_ubx_handler(gps, fn)` | Callback für jede UBX-Nachricht (eigene Erweiterungen) |
-| `neo_gps_filter_preset(gps, preset)` | Sprungfilter mit Preset an/aus |
-| `neo_gps_filter_config(gps, &cfg)` | Sprungfilter mit eigenen Werten |
-| `neo_gps_filter_reset(gps)` | Filter-Referenz vergessen |
-| `neo_gps_local_time(data, &tz, &lt)` | Ortszeit mit Sommerzeit (`neo_gps_time.h`) |
-| `neo_tz_parse(&tz, "CET-1CEST,…")` | Zeitzone aus POSIX-TZ-String |
+| `neo_gps_init(gps, write, user)` | initialise |
+| `neo_gps_feed(gps, byte)` | process one byte → `neo_event_t` (ISR-safe) |
+| `neo_gps_feed_buf(gps, buf, len)` | process a buffer → number of valid messages |
+| `neo_gps_updates(gps)` | `NEO_UPD_*` bits since the last call (resets them) |
+| `neo_gps_data(gps)` | pointer to `neo_gps_data_t` |
+| `neo_gps_has_fix(gps)` | position valid? |
+| `neo_gps_lat_deg/lon_deg/alt_m/speed_kmh/course_deg` | float convenience functions |
+| `neo_gps_set_ubx_handler(gps, fn)` | callback for every UBX message (your own extensions) |
+| `neo_gps_filter_preset(gps, preset)` | jump filter on/off with a preset |
+| `neo_gps_filter_config(gps, &cfg)` | jump filter with your own values |
+| `neo_gps_filter_reset(gps)` | forget the filter reference |
+| `neo_gps_local_time(data, &tz, &lt)` | local time with DST (`neo_gps_time.h`) |
+| `neo_tz_parse(&tz, "CET-1CEST,…")` | time zone from a POSIX TZ string |
 
-### Konfiguration (UBX)
+### Configuration (UBX)
 
-| Funktion | UBX | |
+| Function | UBX | |
 |---|---|---|
-| `neo_gps_detect_model` | MON-VER | erkennt NEO-6 / NEO-7 / M8 |
-| `neo_gps_cfg_port(baud, proto)` | CFG-PRT | Baudrate + Ausgabeprotokolle |
-| `neo_gps_cfg_rate(ms)` | CFG-RATE | Messintervall |
-| `neo_gps_cfg_msg(cls, id, rate)` | CFG-MSG | einzelne Nachricht an/aus |
-| `neo_gps_cfg_output(profil)` | CFG-MSG | `NMEA_DEFAULT`, `NMEA_MINIMAL`, `UBX` |
-| `neo_gps_cfg_dynmodel(modell)` | CFG-NAV5 | Portable, Stationary, Pedestrian, Automotive, Sea, Air |
-| `neo_gps_cfg_power_save(on)` | CFG-RXM | Energiesparmodus |
-| `neo_gps_cfg_save()` | CFG-CFG | Konfiguration speichern |
-| `neo_gps_cfg_factory_reset()` | CFG-CFG | Werkseinstellungen |
-| `neo_gps_reset(HOT/WARM/COLD)` | CFG-RST | GNSS-Neustart |
-| `neo_gps_ack_status()` | ACK | `PENDING`, `OK`, `NAK` der letzten CFG-Nachricht |
-| `neo_gps_ubx_send / _ubx_poll` | – | beliebige UBX-Nachricht |
+| `neo_gps_detect_model` | MON-VER | detects NEO-6 / NEO-7 / M8 |
+| `neo_gps_cfg_port(baud, proto)` | CFG-PRT | baud rate + output protocols |
+| `neo_gps_cfg_rate(ms)` | CFG-RATE | measurement interval |
+| `neo_gps_cfg_msg(cls, id, rate)` | CFG-MSG | single message on/off |
+| `neo_gps_cfg_output(profile)` | CFG-MSG | `NMEA_DEFAULT`, `NMEA_MINIMAL`, `UBX` |
+| `neo_gps_cfg_dynmodel(model)` | CFG-NAV5 | Portable, Stationary, Pedestrian, Automotive, Sea, Air |
+| `neo_gps_cfg_power_save(on)` | CFG-RXM | power save mode |
+| `neo_gps_cfg_save()` | CFG-CFG | save configuration |
+| `neo_gps_cfg_factory_reset()` | CFG-CFG | factory settings |
+| `neo_gps_reset(HOT/WARM/COLD)` | CFG-RST | GNSS restart |
+| `neo_gps_ack_status()` | ACK | `PENDING`, `OK`, `NAK` of the last CFG message |
+| `neo_gps_ubx_send / _ubx_poll` | – | any UBX message |
 
-Alle Befehle sind nicht blockierend. Die Bestätigung kommt als `NEO_EV_UBX_ACK`/`NEO_EV_UBX_NAK` über `neo_gps_feed()`.
+All commands are non-blocking. The acknowledgement arrives as `NEO_EV_UBX_ACK`/`NEO_EV_UBX_NAK` through `neo_gps_feed()`.
 
-### Ausgewertete Nachrichten
+### Parsed messages
 
-- **NMEA** (alle Talker: GP, GN, GL, GA, GB): RMC, GGA, GSA, VTG, GSV (Anzahl sichtbarer Satelliten)
+- **NMEA** (all talkers: GP, GN, GL, GA, GB): RMC, GGA, GSA, VTG, GSV (number of satellites in view)
 - **UBX**: NAV-PVT, NAV-POSLLH, NAV-VELNED, NAV-TIMEUTC, NAV-SOL, NAV-DOP, ACK-ACK/NAK, MON-VER
 
-### Compile-Time-Optionen
+### Compile-time options
 
-| Makro | Standard | |
+| Macro | Default | |
 |---|---|---|
-| `NEO_GPS_ENABLE_NMEA` | 1 | NMEA-Parser |
-| `NEO_GPS_ENABLE_UBX` | 1 | UBX-Parser + Konfiguration |
-| `NEO_GPS_ENABLE_FILTER` | 1 | Sprungfilter (Felder + `neo_gps_filter.c`) |
-| `NEO_GPS_UBX_MAX_PAYLOAD` | 92 | Puffer für UBX-Payload |
-| `NEO_GPS_NMEA_FIELD_MAX` | 15 | max. Zeichen pro NMEA-Feld |
+| `NEO_GPS_ENABLE_NMEA` | 1 | NMEA parser |
+| `NEO_GPS_ENABLE_UBX` | 1 | UBX parser + configuration |
+| `NEO_GPS_ENABLE_FILTER` | 1 | jump filter (fields + `neo_gps_filter.c`) |
+| `NEO_GPS_UBX_MAX_PAYLOAD` | 92 | buffer for the UBX payload |
+| `NEO_GPS_NMEA_FIELD_MAX` | 15 | max. characters per NMEA field |
 
-## Beispiele
+## Examples
 
-- `examples/arduino/NeoGpsBasic`: NMEA, läuft auch auf dem Uno (SoftwareSerial)
-- `examples/arduino/NeoGpsUbx10Hz`: UBX-Binärmodus mit 115200 Baud und 5–10 Hz
-- `examples/stm32_hal`: Interrupt + Ringpuffer
-- `examples/linux`: USB-Seriell-Adapter oder Raspberry Pi: `make linux && ./build/neo_gps_linux /dev/ttyUSB0 9600`
-- `examples/simulation`: Gelände-Simulation mit 4 Sensoren (Fläche und Steigung, 100 × 24 h durch Parser und Sprungfilter): `make sim` schreibt `build/sim.json`
+- `examples/arduino/NeoGpsBasic`: NMEA, also runs on the Uno (SoftwareSerial)
+- `examples/arduino/NeoGpsUbx10Hz`: UBX binary mode at 115200 baud and 5–10 Hz
+- `examples/stm32_hal`: interrupt + ring buffer
+- `examples/linux`: USB serial adapter or Raspberry Pi: `make linux && ./build/neo_gps_linux /dev/ttyUSB0 9600`
+- `examples/simulation`: terrain simulation with 4 sensors (area and slope, 100 × 24 h through parser and jump filter): `make sim` writes `build/sim.json`
 
 ## Tests
 
 ```sh
-make test     # 266 Checks: NMEA, UBX, Fehler, Resync, Senden, Modellerkennung, Filter, Zeitzonen
-make bench    # Durchsatz
+make test     # 266 checks: NMEA, UBX, errors, resync, sending, model detection, filter, time zones
+make bench    # throughput
 ```
 
-Die CI baut zusätzlich mit Sanitizern sowie für AVR und Cortex-M0 mit `-Werror`.
+CI additionally builds with sanitizers and for AVR and Cortex-M0 with `-Werror`.
 
-## Lizenz
+## License
 
 MIT

@@ -1,5 +1,5 @@
-/* Linktest fuer die fertigen dist/<ziel>/libneo_gps.a: ruft aus jeder Quelle
- * etwas auf, damit fehlende oder falsch gebaute Objekte beim Linken auffallen. */
+/* Link test for the finished dist/<target>/libneo_gps.a: calls something from every
+ * source so missing or wrongly built objects show up when linking. */
 #include "neo_gps.h"
 #include "neo_gps_util.h"
 #include "neo_gps_time.h"

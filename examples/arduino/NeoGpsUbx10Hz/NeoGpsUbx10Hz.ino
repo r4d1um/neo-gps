@@ -1,6 +1,6 @@
 /*
- * neo_gps - schnellster Modus: 115200 Baud, nur UBX-Binaerdaten, 5-10 Hz.
- * Fuer Boards mit Hardware-Serial1 (ESP32, Mega, RP2040, STM32duino ...).
+ * neo_gps - fastest mode: 115200 baud, UBX binary data only, 5-10 Hz.
+ * For boards with hardware Serial1 (ESP32, Mega, RP2040, STM32duino ...).
  *
  * NEO-6M: max. 5 Hz, NEO-7M / NEO-M8N: 10 Hz.
  */
@@ -21,7 +21,7 @@ static void gps_write(void *user, const uint8_t *data, uint16_t len)
   Serial1.flush();
 }
 
-/* Bytes verarbeiten, bis ein Event kommt oder Timeout */
+/* Process bytes until an event arrives or the timeout hits */
 static bool wait_event(neo_event_t want, uint32_t timeout_ms)
 {
   uint32_t t0 = millis();
@@ -39,14 +39,14 @@ void setup()
   Serial.begin(115200);
   neo_gps_init(&gps, gps_write, NULL);
 
-  // Modul kann schon auf 115200 stehen (cfg gespeichert) - beide Raten probieren
+  // the module may already be at 115200 (cfg saved) - try both rates
   const uint32_t rates[] = { 9600, 115200 };
   for (uint8_t i = 0; i < 2 && neo_gps_model(&gps) == NEO_MODEL_UNKNOWN; i++) {
     GPS_BEGIN(rates[i]);
     neo_gps_detect_model(&gps);
     wait_event(NEO_EV_UBX_MON_VER, 1500);
   }
-  Serial.print(F("Modell: "));
+  Serial.print(F("Model: "));
   Serial.println(neo_gps_model(&gps));   // 1=NEO-6, 2=NEO-7, 3=M8
 
   neo_gps_cfg_port(&gps, 115200, NEO_PROTO_UBX);
@@ -56,11 +56,11 @@ void setup()
   neo_gps_cfg_output(&gps, NEO_OUT_UBX);
   neo_gps_cfg_rate(&gps, neo_gps_model(&gps) == NEO_MODEL_NEO6 ? 200 : 100);
   wait_event(NEO_EV_UBX_ACK, 500);
-  Serial.println(neo_gps_ack_status(&gps) == NEO_ACK_OK ? F("Rate OK") : F("Rate: kein ACK"));
+  Serial.println(neo_gps_ack_status(&gps) == NEO_ACK_OK ? F("Rate OK") : F("Rate: no ACK"));
 
   neo_gps_cfg_dynmodel(&gps, NEO_DYN_AUTOMOTIVE);
-  neo_gps_filter_preset(&gps, NEO_FILTER_AUTOMOTIVE);   // Sprungfilter (nutzt h_acc aus UBX)
-  // neo_gps_cfg_save(&gps);   // dauerhaft speichern (wenn gewuenscht)
+  neo_gps_filter_preset(&gps, NEO_FILTER_AUTOMOTIVE);   // jump filter (uses h_acc from UBX)
+  // neo_gps_cfg_save(&gps);   // save permanently (if wanted)
 }
 
 void loop()

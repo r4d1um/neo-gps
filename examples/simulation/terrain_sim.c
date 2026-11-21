@@ -1,24 +1,24 @@
 /*
- * Gelaende-Simulation: Flaeche und Steigung eines Grundstuecks per GPS.
+ * Terrain simulation: area and slope of a plot of land via GPS.
  *
- * Vier virtuelle NEO-M8N stehen an den Ecken eines geneigten Grundstuecks und
- * erzeugen 24 h lang UBX NAV-PVT-Frames (1 Hz) mit einem Fehlermodell. Die Frames
- * laufen Byte fuer Byte durch neo_gps_feed() inklusive Sprungfilter. Verglichen
- * werden drei Vorgehensweisen bei gleicher Gesamt-Messdauer T:
+ * Four virtual NEO-M8N stand at the corners of a sloping plot and produce
+ * UBX NAV-PVT frames (1 Hz) with an error model for 24 h. The frames run
+ * byte by byte through neo_gps_feed() including the jump filter. Three
+ * approaches are compared at the same total measuring time T:
  *
- *   seq   Ein Geraet, Ecken nacheinander: jede Ecke T/4 lang, 60 s zum Weitertragen
- *   snap  Vier Sensoren gleichzeitig, nur ein einzelner Moment (Epoche T)
- *   sync  Vier Sensoren gleichzeitig, ueber 0..T gemittelt
+ *   seq   one device, corners one after another: each corner for T/4, 60 s to carry it on
+ *   snap  four sensors at once, a single moment only (epoch T)
+ *   sync  four sensors at once, averaged over 0..T
  *
- * Gemeinsame Fehler (Atmosphaere, Bahnen) verschieben alle gleichzeitigen Messungen
- * gleich und heben sich in Flaeche und Steigung auf. Bei "seq" stammen die Ecken aus
- * verschiedenen Zeiten, dort wirken sie voll.
+ * Common errors (atmosphere, orbits) shift all simultaneous measurements the
+ * same way and cancel out in area and slope. With "seq" the corners come from
+ * different times, so there they take full effect.
  *
- *   make sim                 -> build/sim.json (100 Laeufe)
- *   build/terrain_sim 20     -> 20 Laeufe
+ *   make sim                 -> build/sim.json (100 runs)
+ *   build/terrain_sim 20     -> 20 runs
  *
- * Das Fehlermodell besteht aus plausiblen Annahmen fuer einen NEO-M8N im Freien,
- * nicht aus Messwerten.
+ * The error model consists of plausible assumptions for a NEO-M8N outdoors,
+ * not of measured values.
  * SPDX-License-Identifier: MIT
  */
 #include "neo_gps.h"
@@ -32,19 +32,19 @@
 #define DURATION  86400          /* s, 1 Hz */
 #define MAXCONV   200
 #define CLOUD_DT  60
-#define WALK_S    60             /* Umtragen des Einzelgeraets zur naechsten Ecke */
+#define WALK_S    60             /* carrying the single device to the next corner */
 #define PI        3.14159265358979323846
 #define R_EARTH   6371008.8
 #define LAT0      52.5200
 #define LON0      13.4050
-#define START_UTC 1793430000UL   /* 2026-10-31 07:00:00 UTC = 08:00 MEZ */
+#define START_UTC 1793430000UL   /* 2026-10-31 07:00:00 UTC = 08:00 CET */
 
-/* ---------------- Wahrheit: Grundstueck ---------------------------------- */
-static const double TE[NS] = { 0.0, 32.0, 29.0, -2.0 };   /* Ost  [m] */
-static const double TN[NS] = { 0.0,  3.0, 24.0, 21.0 };   /* Nord [m] */
-#define H0      48.0             /* Hoehe am Punkt A [m]               */
-#define GRADE   0.08             /* 8 % Gefaelle                        */
-#define ASPECT  150.0            /* Richtung bergab, Grad ab Nord (SSO) */
+/* ---------------- Truth: the plot ---------------------------------------- */
+static const double TE[NS] = { 0.0, 32.0, 29.0, -2.0 };   /* east  [m] */
+static const double TN[NS] = { 0.0,  3.0, 24.0, 21.0 };   /* north [m] */
+#define H0      48.0             /* altitude at point A [m]            */
+#define GRADE   0.08             /* 8 % slope                           */
+#define ASPECT  150.0            /* downhill direction, degrees from north (SSE) */
 
 static double true_h(double e, double n)
 {
@@ -52,17 +52,17 @@ static double true_h(double e, double n)
     return H0 - GRADE * (e * sin(a) + n * cos(a));
 }
 
-/* ---------------- Fehlermodell (Annahmen) -------------------------------- */
-#define COM_TAU   1800.0         /* gemeinsam fuer alle Sensoren         */
-#define COM_SH    1.5            /*   m je Achse horizontal              */
-#define COM_SV    3.5            /*   m vertikal                         */
-#define MP_TAU    600.0          /* je Sensor: Multipath, langsam        */
-static const double MP_SH[NS]  = { 0.5, 0.6, 1.2, 0.5 };    /* C steht nah am Haus */
-static const double BIAS_H[NS] = { 0.10, 0.12, 0.35, 0.10 }; /* Rest-Bias, mittelt sich nicht weg */
+/* ---------------- Error model (assumptions) ------------------------------ */
+#define COM_TAU   1800.0         /* common to all sensors                */
+#define COM_SH    1.5            /*   m per horizontal axis              */
+#define COM_SV    3.5            /*   m vertical                         */
+#define MP_TAU    600.0          /* per sensor: multipath, slow         */
+static const double MP_SH[NS]  = { 0.5, 0.6, 1.2, 0.5 };    /* C stands close to the house */
+static const double BIAS_H[NS] = { 0.10, 0.12, 0.35, 0.10 }; /* residual bias, does not average out */
 static const double BIAS_V[NS] = { 0.20, 0.25, 0.70, 0.20 };
-#define WN_H      0.25           /* weisses Rauschen */
+#define WN_H      0.25           /* white noise */
 #define WN_V      0.50
-#define JUMP_RATE (1.0 / 1800.0) /* Ausreisser pro Sensor und Sekunde (~48 pro Tag) */
+#define JUMP_RATE (1.0 / 1800.0) /* outliers per sensor and second (~48 per day) */
 
 static uint64_t rng;
 static double urand(void)
@@ -76,13 +76,13 @@ static double grand(void)
     if (u1 < 1e-300) u1 = 1e-300;
     return sqrt(-2.0 * log(u1)) * cos(2.0 * PI * u2);
 }
-static double gm(double x, double sigma, double tau)   /* Gauss-Markov 1. Ordnung */
+static double gm(double x, double sigma, double tau)   /* first-order Gauss-Markov */
 {
     double phi = exp(-1.0 / tau);
     return x * phi + sigma * sqrt(1.0 - phi * phi) * grand();
 }
 
-/* ---------------- UBX NAV-PVT erzeugen ----------------------------------- */
+/* ---------------- Generate UBX NAV-PVT ----------------------------------- */
 static void put32(uint8_t *p, uint32_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24); }
 static void put16(uint8_t *p, uint16_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); }
 
@@ -113,7 +113,7 @@ static size_t make_pvt(uint8_t *f, uint32_t unix_t, double e, double n, double h
     return 100;
 }
 
-/* ---------------- Auswertung --------------------------------------------- */
+/* ---------------- Evaluation --------------------------------------------- */
 typedef struct { double e[NS], n[NS], h[NS]; } geo_t;
 typedef struct { double area, surface, slope_pct, slope_deg, aspect; } result_t;
 
@@ -122,12 +122,12 @@ static result_t evaluate(const geo_t *g)
     result_t r;
     double s = 0, m[3][4] = { { 0 } }, b, c;
     int i, j, k;
-    for (i = 0; i < NS; i++) {                     /* Gauss'sche Trapezformel */
+    for (i = 0; i < NS; i++) {                     /* Gauss's shoelace formula */
         j = (i + 1) % NS;
         s += g->e[i] * g->n[j] - g->e[j] * g->n[i];
     }
     r.area = fabs(s) * 0.5;
-    for (i = 0; i < NS; i++) {                     /* Ausgleichsebene h = a + b*E + c*N */
+    for (i = 0; i < NS; i++) {                     /* best-fit plane h = a + b*E + c*N */
         double row[3] = { 1.0, g->e[i], g->n[i] };
         for (j = 0; j < 3; j++) {
             for (k = 0; k < 3; k++) m[j][k] += row[j] * row[k];
@@ -148,10 +148,10 @@ static result_t evaluate(const geo_t *g)
     return r;
 }
 
-/* ---------------- ein 24-h-Lauf ------------------------------------------ */
-static double pos[NS][DURATION][3];          /* akzeptierte bzw. zuletzt gueltige Position */
+/* ---------------- one 24 h run ------------------------------------------- */
+static double pos[NS][DURATION][3];          /* accepted or last valid position          */
 static uint8_t okf[NS][DURATION];
-static double pre[NS][DURATION + 1][3];      /* Praefixsummen ueber akzeptierte Epochen   */
+static double pre[NS][DURATION + 1][3];      /* prefix sums over accepted epochs          */
 static uint32_t prc[NS][DURATION + 1];
 
 typedef struct { long events, jump_epochs, passed, rejected; } fstat_t;
@@ -167,7 +167,7 @@ static void run(uint64_t seed, fstat_t *fs, char *start_s, char *end_s)
     rng = seed * 0x9E3779B97F4A7C15ULL + 0x632BE59BD9B4E019ULL;
     for (k = 0; k < 20; k++) urand();
 
-    /* Filter: Qualitaet + Sprungtest, keine Glaettung (gemittelt wird in der Auswertung) */
+    /* Filter: quality + jump test, no smoothing (averaging happens in the evaluation) */
     memset(&fc, 0, sizeof(fc));
     fc.min_fix = NEO_FIX_3D; fc.min_sv = 6; fc.max_hdop = 300; fc.max_h_acc = 10000;
     fc.max_accel = 300; fc.margin = 4000; fc.reanchor = 30;
@@ -200,7 +200,7 @@ static void run(uint64_t seed, fstat_t *fs, char *start_s, char *end_s)
             mp[k][1] = gm(mp[k][1], MP_SH[k], MP_TAU);
             mp[k][2] = gm(mp[k][2], 2 * MP_SH[k], MP_TAU);
 
-            if (!jump_left[k] && urand() < JUMP_RATE) {       /* neuer Ausreisser, 1..4 s */
+            if (!jump_left[k] && urand() < JUMP_RATE) {       /* new outlier, 1..4 s */
                 double mag = 15 + urand() * 65, dir = urand() * 2 * PI;
                 jump_left[k] = 1 + (int)(urand() * 4);
                 jd[k][0] = mag * sin(dir); jd[k][1] = mag * cos(dir); jd[k][2] = (urand() - 0.5) * 60;
@@ -217,7 +217,7 @@ static void run(uint64_t seed, fstat_t *fs, char *start_s, char *end_s)
                          (uint32_t)(2200 + 400 * fabs(grand())), (uint32_t)(4000 + 800 * fabs(grand())),
                          (uint32_t)(30 * fabs(grand())), (uint8_t)(10 + (int)(urand() * 4)));
             neo_gps_updates(&gps[k]);
-            for (b = 0; b < n; b++) neo_gps_feed(&gps[k], frame[b]);   /* echte Library */
+            for (b = 0; b < n; b++) neo_gps_feed(&gps[k], frame[b]);   /* the real library */
 
             okf[k][t] = (neo_gps_updates(&gps[k]) & NEO_UPD_POSITION) != 0;
             if (in_jump && okf[k][t]) fs[k].passed++;
@@ -229,13 +229,13 @@ static void run(uint64_t seed, fstat_t *fs, char *start_s, char *end_s)
             }
             pos[k][t][0] = last[k][0]; pos[k][t][1] = last[k][1]; pos[k][t][2] = last[k][2];
         }
-        if (start_s && (t == 0 || t == DURATION - 1)) {           /* Ortszeit mit der Library */
+        if (start_s && (t == 0 || t == DURATION - 1)) {           /* local time with the library */
             static const neo_tz_t berlin = NEO_TZ_BERLIN;
             neo_local_time_t lt;
             if (neo_gps_local_time(neo_gps_data(&gps[0]), &berlin, &lt))
-                snprintf(t == 0 ? start_s : end_s, 64, "%02u.%02u.%04u %02u:%02u %s",
-                         lt.t.day, lt.t.month, lt.t.year, lt.t.hour, lt.t.minute,
-                         lt.is_dst ? "MESZ" : "MEZ");
+                snprintf(t == 0 ? start_s : end_s, 64, "%04u-%02u-%02u %02u:%02u %s",
+                         lt.t.year, lt.t.month, lt.t.day, lt.t.hour, lt.t.minute,
+                         lt.is_dst ? "CEST" : "CET");
         }
     }
     for (k = 0; k < NS; k++) {
@@ -250,7 +250,7 @@ static void run(uint64_t seed, fstat_t *fs, char *start_s, char *end_s)
     }
 }
 
-/* Mittel von Sensor k ueber [a, b) */
+/* mean of sensor k over [a, b) */
 static void wavg(int k, uint32_t a, uint32_t b, double out[3])
 {
     uint32_t c = prc[k][b] - prc[k][a];
@@ -264,7 +264,7 @@ static void methods(uint32_t T, geo_t *seq, geo_t *snap, geo_t *sync)
     int k;
     for (k = 0; k < NS; k++) {
         double v[3];
-        /* ein Geraet: jede Ecke T/4 messen, dazwischen WALK_S Sekunden zum Umtragen */
+        /* one device: measure each corner for T/4, WALK_S seconds of carrying in between */
         uint32_t q = T / NS ? T / NS : 1;
         uint32_t a = (uint32_t)k * (q + WALK_S), b = a + q;
         if (b > DURATION) { b = DURATION; a = b - q; }
@@ -274,7 +274,7 @@ static void methods(uint32_t T, geo_t *seq, geo_t *snap, geo_t *sync)
     }
 }
 
-/* ---------------- JSON-Helfer -------------------------------------------- */
+/* ---------------- JSON helpers ------------------------------------------- */
 static void j_geo(const geo_t *g)
 {
     int i;
@@ -307,7 +307,7 @@ int main(int argc, char **argv)
 {
     int runs = argc > 1 ? atoi(argv[1]) : 100;
     static uint32_t T[MAXCONV];
-    static result_t rs[3][MAXCONV][1000];         /* [Methode][T][Lauf] */
+    static result_t rs[3][MAXCONV][1000];         /* [method][T][run] */
     static double final_err[1000], sorted[1000];
     static fstat_t fs[NS], fsum[NS];
     char start_s[64] = "", end_s[64] = "";
@@ -319,7 +319,7 @@ int main(int argc, char **argv)
     if (runs < 1) runs = 1;
     if (runs > 1000) runs = 1000;
 
-    /* Messdauern 4 s .. 24 h, logarithmisch, ganzzahlig, ohne Duplikate */
+    /* measuring times 4 s .. 24 h, logarithmic, integer, without duplicates */
     for (lg = log10(4.0); nt < MAXCONV; lg += (log10((double)DURATION) - log10(4.0)) / 119.0) {
         uint32_t v = (uint32_t)lround(pow(10.0, lg));
         if (v > DURATION) v = DURATION;
@@ -345,7 +345,7 @@ int main(int argc, char **argv)
             }
         }
         final_err[r] = fabs(rs[2][nt - 1][r].slope_pct - rt.slope_pct);
-        fprintf(stderr, "\rLauf %d/%d", r + 1, runs);
+        fprintf(stderr, "\rrun %d/%d", r + 1, runs);
     }
     fprintf(stderr, "\n");
 
@@ -364,7 +364,7 @@ int main(int argc, char **argv)
     for (i = 0; i < nt; i++) printf("%s%u", i ? "," : "", T[i]);
     printf("],");
 
-    /* Fehlerstatistik ueber alle Laeufe: Median und 90-%-Quantil des Betrags */
+    /* error statistics over all runs: median and 90 % quantile of the magnitude */
     {
         static const char *mn[3] = { "seq", "snap", "sync" };
         static const char *q[6] = { "area50", "area90", "slope50", "slope90", "aspect50", "aspect90" };
@@ -390,12 +390,12 @@ int main(int argc, char **argv)
         }
         printf("},");
 
-        /* Beispiel-Laeufe: typisch (Median) und ungünstig (90 %) nach Steigungsfehler
-         * der Methode "sync" nach 24 h - deterministisch neu gerechnet */
+        /* example runs: typical (median) and unfavourable (90 %) by slope error
+         * of method "sync" after 24 h - recomputed deterministically */
         printf("\"examples\":[");
         {
             static const double want[2] = { 0.5, 0.9 };
-            static const char *label[2] = { "typisch", "ungünstig" };
+            static const char *label[2] = { "typical", "unfavourable" };
             int e;
             memcpy(sorted, final_err, sizeof(double) * (size_t)runs);
             for (e = 0; e < 2; e++) {
@@ -412,7 +412,7 @@ int main(int argc, char **argv)
                         printf("%s[%.2f,%.2f,%.2f]", t ? "," : "", pos[k][t][0], pos[k][t][1], pos[k][t][2]);
                     printf("]");
                 }
-                printf("],\"dcloud\":[");            /* gleiche Epoche, relativ zu A */
+                printf("],\"dcloud\":[");            /* same epoch, relative to A */
                 for (k = 0; k < NS; k++) {
                     printf("%s[", k ? "," : "");
                     for (t = 0; t < DURATION; t += CLOUD_DT)

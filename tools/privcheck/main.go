@@ -1,14 +1,14 @@
-// privcheck sucht in den Dateien eines Repos nach Inhalten, die in einem
-// oeffentlichen Repo nichts verloren haben: private IP-Adressen, Heimnetz-
-// Hostnamen, E-Mail-Adressen und typische Zugangsdaten.
+// privcheck searches a repo's files for content that has no place in a
+// public repo: private IP addresses, home network host names, email
+// addresses and typical credentials.
 //
-//	go run ./tools/privcheck [verzeichnis]     (Standard: .)
+//	go run ./tools/privcheck [directory]     (default: .)
 //
-// Exit-Code 1, wenn etwas gefunden wurde; jede Fundstelle steht als
-// datei:zeile: grund auf stdout. Die Muster sind absichtlich allgemein, damit
-// diese Datei selbst nichts Privates enthalten muss.
+// Exit code 1 if anything was found; every finding is printed as
+// file:line: reason on stdout. The patterns are deliberately generic so
+// this file itself doesn't need to contain anything private.
 //
-// Ausnahme fuer eine Zeile: Kommentar "privcheck:ok" in derselben Zeile.
+// Exception for one line: the comment "privcheck:ok" on the same line.
 package main
 
 import (
@@ -29,15 +29,15 @@ type rule struct {
 
 var rules = []rule{
 	{"private IPv4 (RFC 1918)", regexp.MustCompile(`\b(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b`)},
-	{"Heimnetz-Hostname", regexp.MustCompile(`(?i)\b[a-z0-9-]+\.(fritz\.box|lan|home\.arpa|internal)\b`)},
-	{"E-Mail-Adresse", regexp.MustCompile(`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`)},
+	{"home network host name", regexp.MustCompile(`(?i)\b[a-z0-9-]+\.(fritz\.box|lan|home\.arpa|internal)\b`)},
+	{"email address", regexp.MustCompile(`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`)},
 	{"GitHub-Token", regexp.MustCompile(`\b(ghp|gho|ghu|ghs|ghr|github_pat)_[A-Za-z0-9_]{20,}`)},
 	{"AWS-Key", regexp.MustCompile(`\bAKIA[0-9A-Z]{16}\b`)},
-	{"privater Schluessel", regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`)},
-	{"Passwort im Klartext", regexp.MustCompile(`(?i)\b(password|passwd|passwort|wifi_pass|wlan_pass)\s*[:=]\s*["'][^"'\s]{4,}["']`)},
+	{"private key", regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`)},
+	{"plain-text password", regexp.MustCompile(`(?i)\b(password|passwd|passwort|wifi_pass|wlan_pass)\s*[:=]\s*["'][^"'\s]{4,}["']`)},
 }
 
-// erlaubte E-Mail-Adressen: Platzhalter und GitHub-noreply
+// allowed email addresses: placeholders and GitHub noreply
 var okMail = regexp.MustCompile(`(?i)@(example\.(com|org|net)|users\.noreply\.github\.com|noreply\.github\.com|anthropic\.com)$`)
 
 func main() {
@@ -51,14 +51,14 @@ func main() {
 		os.Exit(2)
 	}
 	if n > 0 {
-		fmt.Printf("privcheck: %d Fundstelle(n)\n", n)
+		fmt.Printf("privcheck: %d finding(s)\n", n)
 		os.Exit(1)
 	}
-	fmt.Println("privcheck: nichts gefunden")
+	fmt.Println("privcheck: nothing found")
 }
 
-// scan prueft alle Textdateien unter root (ohne .git, build-Ordner und
-// Binaerdateien) und gibt die Zahl der Fundstellen zurueck.
+// scan checks all text files under root (except .git, build folders and
+// binary files) and returns the number of findings.
 func scan(root string, out *os.File) (int, error) {
 	found := 0
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
@@ -66,7 +66,7 @@ func scan(root string, out *os.File) (int, error) {
 			return err
 		}
 		if d.IsDir() {
-			// die eigenen Testdaten enthalten absichtlich Treffer
+			// our own test data contains hits on purpose
 			if filepath.ToSlash(p) == "tools/privcheck" || strings.HasSuffix(filepath.ToSlash(p), "/tools/privcheck") {
 				return filepath.SkipDir
 			}
@@ -80,7 +80,7 @@ func scan(root string, out *os.File) (int, error) {
 		if err != nil {
 			return err
 		}
-		if bytes.IndexByte(data, 0) >= 0 { // Binaerdatei
+		if bytes.IndexByte(data, 0) >= 0 { // binary file
 			return nil
 		}
 		sc := bufio.NewScanner(bytes.NewReader(data))
@@ -96,7 +96,7 @@ func scan(root string, out *os.File) (int, error) {
 	return found, err
 }
 
-// check liefert die Gruende, aus denen eine Zeile auffaellt.
+// check returns the reasons why a line stands out.
 func check(s string) []string {
 	if strings.Contains(s, "privcheck:ok") {
 		return nil
@@ -104,7 +104,7 @@ func check(s string) []string {
 	var why []string
 	for _, r := range rules {
 		for _, m := range r.re.FindAllString(s, -1) {
-			if r.why == "E-Mail-Adresse" && okMail.MatchString(m) {
+			if r.why == "email address" && okMail.MatchString(m) {
 				continue
 			}
 			why = append(why, r.why+": "+m)

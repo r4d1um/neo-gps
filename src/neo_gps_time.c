@@ -1,6 +1,6 @@
 /*
- * neo_gps_time - Ortszeit mit Zeitzone und Sommerzeit (Teil von neo_gps).
- * Rein 32-Bit-ganzzahlig, gueltig fuer 1970..2105.
+ * neo_gps_time - local time with time zone and daylight saving time (part of neo_gps).
+ * Pure 32-bit integer, valid for 1970..2105.
  * SPDX-License-Identifier: MIT
  */
 #include "neo_gps_time.h"
@@ -8,7 +8,7 @@
 
 #define DAY_S ((uint32_t)86400UL)
 
-/* Tage seit 1970-01-01 (Howard Hinnant, days_from_civil) */
+/* Days since 1970-01-01 (Howard Hinnant, days_from_civil) */
 static uint32_t days_from_civil(uint32_t y, uint32_t m, uint32_t d)
 {
     uint32_t era, yoe, doy, doe;
@@ -48,7 +48,7 @@ uint8_t neo_time_from_unix(uint32_t t, neo_datetime_t *out)
     /* civil_from_days (Howard Hinnant) */
     uint32_t z = t / DAY_S, s = t % DAY_S;
     uint32_t era, doe, yoe, doy, mp, y, m;
-    uint8_t wday = (uint8_t)((z + 4u) % 7u);       /* 1970-01-01 war ein Donnerstag */
+    uint8_t wday = (uint8_t)((z + 4u) % 7u);       /* 1970-01-01 was a Thursday */
     z += 719468UL;
     era = z / 146097UL;
     doe = z - era * (uint32_t)146097UL;
@@ -67,7 +67,7 @@ uint8_t neo_time_from_unix(uint32_t t, neo_datetime_t *out)
     return wday;
 }
 
-/* Tag (Tage seit 1970) der Regel "w-ter Wochentag wd im Monat m", w = 5: letzter */
+/* Day (days since 1970) of the rule "w-th weekday wd in month m", w = 5: last */
 static uint32_t rule_day(uint32_t y, uint8_t m, uint8_t w, uint8_t wd)
 {
     uint32_t first = days_from_civil(y, m, 1);
@@ -78,7 +78,7 @@ static uint32_t rule_day(uint32_t y, uint8_t m, uint8_t w, uint8_t wd)
     return day;
 }
 
-/* t + Minuten (auch negativ), modulo 2^32 - wohldefiniert fuer unsigned */
+/* t + minutes (also negative), modulo 2^32 - well-defined for unsigned */
 static uint32_t add_min(uint32_t t, int32_t minutes) { return t + (uint32_t)(minutes * 60L); }
 
 uint32_t neo_tz_utc_to_local(const neo_tz_t *tz, uint32_t utc, int16_t *offset_min, uint8_t *is_dst)
@@ -89,15 +89,15 @@ uint32_t neo_tz_utc_to_local(const neo_tz_t *tz, uint32_t utc, int16_t *offset_m
     if (tz->dst_offset != tz->std_offset && tz->start_month && tz->end_month) {
         neo_datetime_t lt;
         uint32_t y, s, e;
-        neo_time_from_unix(add_min(utc, tz->std_offset), &lt);     /* Jahr in lokaler Normalzeit */
+        neo_time_from_unix(add_min(utc, tz->std_offset), &lt);     /* year in local standard time */
         y = lt.year;
-        /* Umschaltzeitpunkte in UTC: Beginn in Normalzeit, Ende in Sommerzeit angegeben */
+        /* Switch times in UTC: start given in standard time, end in daylight time */
         s = add_min(rule_day(y, tz->start_month, tz->start_week, tz->start_wday) * DAY_S,
                     (int32_t)tz->start_min - tz->std_offset);
         e = add_min(rule_day(y, tz->end_month, tz->end_week, tz->end_wday) * DAY_S,
                     (int32_t)tz->end_min - tz->dst_offset);
-        dst = (s < e) ? (utc >= s && utc < e)          /* Nordhalbkugel */
-                      : (utc >= s || utc < e);         /* Suedhalbkugel: ueber den Jahreswechsel */
+        dst = (s < e) ? (utc >= s && utc < e)          /* northern hemisphere */
+                      : (utc >= s || utc < e);         /* southern hemisphere: across New Year */
         if (dst) off = tz->dst_offset;
     }
     if (offset_min) *offset_min = off;
@@ -117,7 +117,7 @@ int neo_gps_local_time(const neo_gps_data_t *d, const neo_tz_t *tz, neo_local_ti
 }
 
 /* ------------------------------------------------------------------------- */
-/* POSIX-TZ-Parser                                                           */
+/* POSIX TZ parser                                                           */
 /* ------------------------------------------------------------------------- */
 
 static const char *p_num(const char *s, uint8_t max_digits, int32_t *v)
@@ -130,7 +130,7 @@ static const char *p_num(const char *s, uint8_t max_digits, int32_t *v)
     return s;
 }
 
-/* Name: mind. 3 Buchstaben oder <...> */
+/* Name: at least 3 letters or <...> */
 static const char *p_name(const char *s)
 {
     const char *b;
@@ -144,7 +144,7 @@ static const char *p_name(const char *s)
     return (s - b >= 3) ? s : 0;
 }
 
-/* [+-]hh[:mm[:ss]] -> Minuten */
+/* [+-]hh[:mm[:ss]] -> minutes */
 static const char *p_hms(const char *s, int32_t *minutes)
 {
     int32_t h, m = 0, sec;
@@ -154,7 +154,7 @@ static const char *p_hms(const char *s, int32_t *minutes)
     if (!(s = p_num(s, 3, &h)) || h > 167) return 0;
     if (*s == ':') {
         if (!(s = p_num(s + 1, 2, &m)) || m > 59) return 0;
-        if (*s == ':' && !(s = p_num(s + 1, 2, &sec))) return 0;   /* Sekunden ignoriert */
+        if (*s == ':' && !(s = p_num(s + 1, 2, &sec))) return 0;   /* seconds ignored */
     }
     *minutes = neg ? -(h * 60 + m) : h * 60 + m;
     return s;
@@ -163,7 +163,7 @@ static const char *p_hms(const char *s, int32_t *minutes)
 /* Mm.w.d[/time] */
 static const char *p_rule(const char *s, uint8_t *mo, uint8_t *wk, uint8_t *wd, int16_t *tm)
 {
-    int32_t m, w, d, t = 120;                       /* Standard: 02:00 */
+    int32_t m, w, d, t = 120;                       /* default: 02:00 */
     if (!s || *s != 'M') return 0;
     if (!(s = p_num(s + 1, 2, &m)) || m < 1 || m > 12 || *s != '.') return 0;
     if (!(s = p_num(s + 1, 1, &w)) || w < 1 || w > 5 || *s != '.') return 0;
@@ -182,7 +182,7 @@ int neo_tz_parse(neo_tz_t *tz, const char *s)
     memset(&r, 0, sizeof(r));
 
     if (!(s = p_hms(p_name(s), &off)) || off > 24 * 60 || off < -24 * 60) return 0;
-    r.std_offset = (int16_t)-off;                   /* POSIX: Vorzeichen umgekehrt (CET-1 = UTC+1) */
+    r.std_offset = (int16_t)-off;                   /* POSIX: sign reversed (CET-1 = UTC+1) */
     r.dst_offset = r.std_offset;
 
     if (*s) {
@@ -192,7 +192,7 @@ int neo_tz_parse(neo_tz_t *tz, const char *s)
             if (!(s = p_hms(s, &off)) || off > 24 * 60 || off < -24 * 60) return 0;
             r.dst_offset = (int16_t)-off;
         }
-        if (*s != ',') return 0;                    /* Sommerzeit ohne Regel: nicht unterstuetzt */
+        if (*s != ',') return 0;                    /* DST without a rule: not supported */
         s = p_rule(s + 1, &r.start_month, &r.start_week, &r.start_wday, &r.start_min);
         if (!s || *s != ',') return 0;
         s = p_rule(s + 1, &r.end_month, &r.end_week, &r.end_wday, &r.end_min);

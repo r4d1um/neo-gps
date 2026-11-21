@@ -1,7 +1,7 @@
 /*
- * neo_gps_filter - Positionsfilter gegen GPS-Spruenge (Teil von neo_gps).
- * Eigene Datei, damit der Code nur gelinkt wird, wenn neo_gps_filter_* benutzt wird.
- * Reine 32-Bit-Ganzzahlrechnung, laeuft einmal pro Epoche (nicht pro Byte).
+ * neo_gps_filter - position filter against GPS jumps (part of neo_gps).
+ * Separate file so the code is only linked when neo_gps_filter_* is used.
+ * Pure 32-bit integer arithmetic, runs once per epoch (not per byte).
  * SPDX-License-Identifier: MIT
  */
 #include "neo_gps.h"
@@ -9,10 +9,10 @@
 #if NEO_GPS_ENABLE_FILTER
 
 #define NO_TIME   NEO_GPS_TIME_UNKNOWN
-#define HALF_TURN ((int32_t)1800000000L)   /* 180 Grad in 1e-7 Grad */
+#define HALF_TURN ((int32_t)1800000000L)   /* 180 degrees in 1e-7 degrees */
 
-/* cos(lat) in Q15 ohne Tabelle (Bhaskara-Naeherung, Fehler < 0.2 %):
- * cos(x) ~ (32400 - 4x^2) / (32400 + x^2), x in Grad; hier mit x in 0.01 Grad */
+/* cos(lat) in Q15 without a table (Bhaskara approximation, error < 0.2 %):
+ * cos(x) ~ (32400 - 4x^2) / (32400 + x^2), x in degrees; here with x in 0.01 degrees */
 static uint32_t cos_lat_q15(int32_t lat)
 {
     uint32_t c = (lat < 0 ? 0u - (uint32_t)lat : (uint32_t)lat) / 100000UL;   /* 0..9000 */
@@ -24,7 +24,7 @@ static uint32_t cos_lat_q15(int32_t lat)
     return num / den;
 }
 
-/* Laengendifferenz a-b, normiert auf -180..+180 Grad, ohne Ueberlauf (|a|,|b| <= 180 Grad) */
+/* Longitude difference a-b, normalised to -180..+180 degrees, without overflow (|a|,|b| <= 180 degrees) */
 static int32_t dlon32(int32_t a, int32_t b)
 {
     uint32_t d;
@@ -39,11 +39,11 @@ static int32_t dlon32(int32_t a, int32_t b)
 
 static uint32_t abs32(int32_t v) { return v < 0 ? 0u - (uint32_t)v : (uint32_t)v; }
 
-/* a * b / div mit Saettigung statt Ueberlauf */
+/* a * b / div, saturating instead of overflowing */
 static uint32_t muldiv_sat(uint32_t a, uint32_t b, uint32_t div)
 {
     if (b && a > 0xFFFFFFFFUL / b) {
-        a /= div;                                    /* erst teilen, dann pruefen */
+        a /= div;                                    /* divide first, then check */
         return (b && a > 0xFFFFFFFFUL / b) ? 0xFFFFFFFFUL : a * b;
     }
     return a * b / div;
@@ -51,8 +51,8 @@ static uint32_t muldiv_sat(uint32_t a, uint32_t b, uint32_t div)
 
 static uint32_t add_sat(uint32_t a, uint32_t b) { return (a + b < a) ? 0xFFFFFFFFUL : a + b; }
 
-/* Ist die neue Position weiter weg, als in dt_ms physikalisch moeglich?
- * Reine 32-Bit-Rechnung; Distanz per "max + 3/8 min" (Fehler < 7 %). */
+/* Is the new position further away than physically possible in dt_ms?
+ * Pure 32-bit arithmetic; distance via "max + 3/8 min" (error < 7 %). */
 static uint8_t is_jump(const neo_gps_t *g, int32_t lat, int32_t lon, uint32_t dt_ms)
 {
     const neo_filter_cfg_t *c = &g->f_cfg;
@@ -61,32 +61,32 @@ static uint8_t is_jump(const neo_gps_t *g, int32_t lat, int32_t lon, uint32_t dt
     uint32_t cq = cos_lat_q15(g->f_lat);
     uint32_t dx = (ax >> 15) * cq + (((ax & 0x7FFFu) * cq) >> 15);
     uint32_t hi = dx > dy ? dx : dy, lo = dx > dy ? dy : dx;
-    uint32_t dist = hi + lo / 8u * 3u;                               /* in 1e-7 Grad */
+    uint32_t dist = hi + lo / 8u * 3u;                               /* in 1e-7 degrees */
     uint32_t v = g->data.speed > g->f_speed ? g->data.speed : g->f_speed;
     uint32_t dt = dt_ms > 600000UL ? 600000UL : dt_ms;
     uint32_t allow;
 
-    /* erlaubte Strecke in mm:  1.5 * v * t  +  a * t^2  +  Toleranz  +  2 * h_acc */
+    /* allowed distance in mm:  1.5 * v * t  +  a * t^2  +  margin  +  2 * h_acc */
     allow = muldiv_sat(v + v / 2u, dt, 1000u);
     allow = add_sat(allow, muldiv_sat(muldiv_sat(c->max_accel, dt, 1000u), dt, 1000u));
     allow = add_sat(allow, c->margin);
     allow = add_sat(allow, g->data.h_acc);
     allow = add_sat(allow, g->data.h_acc);
-    /* mm -> 1e-7 Grad (1e-7 Grad Breite ~ 11.132 mm) */
+    /* mm -> 1e-7 degrees (1e-7 degrees of latitude ~ 11.132 mm) */
     allow = allow / 11132u * 1000u + allow % 11132u * 1000u / 11132u;
     return dist > allow;
 }
 
-/* Entscheidet ueber eine neue Rohposition. t = Epochenzeit in ms (NO_TIME = unbekannt),
- * period = Ueberlaufperiode von t. Rueckgabe 1 = uebernommen (data.lat/lon gesetzt). */
+/* Decides on a new raw position. t = epoch time in ms (NO_TIME = unknown),
+ * period = wrap-around period of t. Returns 1 = taken over (data.lat/lon set). */
 static uint8_t filter_commit(neo_gps_t *g, int32_t lat, int32_t lon, uint32_t t, uint32_t period)
 {
     neo_gps_data_t *d = &g->data;
     const neo_filter_cfg_t *c = &g->f_cfg;
     uint8_t why = NEO_REJECT_NONE, reanchor = 0;
 
-    /* Zweite Positionsnachricht derselben Epoche (z.B. RMC + GGA): nicht doppelt werten.
-     * Nur nach einer Qualitaets-Ablehnung neu pruefen (GGA bringt frische Satelliten/HDOP). */
+    /* Second position message of the same epoch (e.g. RMC + GGA): don't count it twice.
+     * Only re-check after a quality rejection (GGA brings fresh satellites/HDOP). */
     if (t != NO_TIME && g->f_epoch_set && t == g->f_epoch) {
         if (g->f_epoch_ok) { d->updated |= NEO_UPD_POSITION; return 1; }
         if (d->reject_reason == NEO_REJECT_JUMP) return 0;
@@ -101,7 +101,7 @@ static uint8_t filter_commit(neo_gps_t *g, int32_t lat, int32_t lon, uint32_t t,
     else if (g->f_have && c->max_accel && t != NO_TIME && g->f_t != NO_TIME) {
         uint32_t dt = (t >= g->f_t) ? t - g->f_t : t + period - g->f_t;
         if (is_jump(g, lat, lon, dt)) {
-            if (c->reanchor && ++g->f_jumps >= c->reanchor) reanchor = 1;   /* Ort hat sich wirklich geaendert */
+            if (c->reanchor && ++g->f_jumps >= c->reanchor) reanchor = 1;   /* the place really has changed */
             else why = NEO_REJECT_JUMP;
         }
     }
@@ -115,14 +115,14 @@ static uint8_t filter_commit(neo_gps_t *g, int32_t lat, int32_t lon, uint32_t t,
         return 0;
     }
 
-    /* Glaettung im Stillstand (gegen das typische Wandern um wenige Meter) */
+    /* Smoothing at standstill (against the typical drift of a few metres) */
     if (!reanchor && g->f_have && c->smooth_shift && d->speed <= c->static_speed) {
         int32_t dy = lat - g->f_lat;
         int32_t dx = dlon32(lon, g->f_lon);
         if (abs32(dy) < 10000000UL && abs32(dx) < 10000000UL) {   /* < ~1 km */
             int32_t div = (int32_t)1 << c->smooth_shift;
             int32_t nl = g->f_lon + dx / div;
-            if (nl > HALF_TURN) nl = nl - HALF_TURN - HALF_TURN;        /* ueber die Datumsgrenze */
+            if (nl > HALF_TURN) nl = nl - HALF_TURN - HALF_TURN;        /* across the date line */
             else if (nl < -HALF_TURN) nl = nl + HALF_TURN + HALF_TURN;
             lat = g->f_lat + dy / div;
             lon = nl;
@@ -155,7 +155,7 @@ void neo_gps_filter_config(neo_gps_t *g, const neo_filter_cfg_t *cfg)
 
 void neo_gps_filter_preset(neo_gps_t *g, neo_filter_preset_t preset)
 {
-    /* Zuweisung statt const-Tabellen: auf AVR liegen const-Daten sonst im RAM */
+    /* Assignments instead of const tables: on AVR const data would otherwise sit in RAM */
     neo_filter_cfg_t c;
     c.min_fix = NEO_FIX_3D;
     switch (preset) {

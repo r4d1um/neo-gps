@@ -1,19 +1,19 @@
 /*
- * STM32 HAL-Beispiel (CubeMX: USARTx 9600 8N1, NVIC-Interrupt an).
- * Bytes kommen per Interrupt in einen Ringpuffer, geparst wird in der Hauptschleife.
- * (neo_gps_feed() ist kurz genug, um es auch direkt in der ISR aufzurufen.)
+ * STM32 HAL example (CubeMX: USARTx 9600 8N1, NVIC interrupt on).
+ * Bytes arrive via interrupt in a ring buffer; parsing happens in the main loop.
+ * (neo_gps_feed() is short enough to call directly in the ISR, too.)
  *
  * In main():  gps_app_init();  while (1) { gps_app_poll(); ... }
  */
 #include "main.h"
 #include "neo_gps.h"
 
-extern UART_HandleTypeDef huart2;          /* an das Modul angeschlossene UART */
+extern UART_HandleTypeDef huart2;          /* UART connected to the module */
 #define GPS_UART (&huart2)
 
 static neo_gps_t gps;
 static uint8_t rx_byte;
-static volatile uint8_t ring[256];         /* 256 -> uint8_t-Indizes laufen automatisch um */
+static volatile uint8_t ring[256];         /* 256 -> uint8_t indices wrap around automatically */
 static volatile uint8_t head, tail;
 
 static void gps_write(void *user, const uint8_t *data, uint16_t len)
@@ -37,7 +37,7 @@ void gps_app_init(void)
 
     neo_gps_cfg_output(&gps, NEO_OUT_NMEA_MINIMAL);
     neo_gps_cfg_dynmodel(&gps, NEO_DYN_AUTOMOTIVE);
-    neo_gps_cfg_rate(&gps, 200);           /* 5 Hz - geht auf allen drei Modulen */
+    neo_gps_cfg_rate(&gps, 200);           /* 5 Hz - works on all three modules */
 }
 
 void gps_app_poll(void)
@@ -47,7 +47,7 @@ void gps_app_poll(void)
 
     if (neo_gps_updates(&gps) & NEO_UPD_POSITION) {
         const neo_gps_data_t *d = neo_gps_data(&gps);
-        /* d->lat / d->lon in 1e-7 Grad, d->alt_msl in mm, d->speed in mm/s ... */
+        /* d->lat / d->lon in 1e-7 degrees, d->alt_msl in mm, d->speed in mm/s ... */
         (void)d;
     }
 }

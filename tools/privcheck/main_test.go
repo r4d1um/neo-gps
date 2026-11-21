@@ -10,11 +10,11 @@ func TestCheck(t *testing.T) {
 		`kontakt: jemand@beispiel.de`,
 		`token ghp_abcdefghijklmnopqrstuvwxyz0123`,
 		`-----BEGIN OPENSSH PRIVATE KEY-----`,
-		`#define WIFI_PASS = "geheim123"`,
+		`#define WIFI_PASS = "secret123"`,
 	}
 	for _, s := range hits {
 		if len(check(s)) == 0 {
-			t.Errorf("nicht erkannt: %q", s)
+			t.Errorf("not detected: %q", s)
 		}
 	}
 	clean := []string{
@@ -22,12 +22,12 @@ func TestCheck(t *testing.T) {
 		`41898282+github-actions[bot]@users.noreply.github.com`,
 		`user@example.com`,
 		`$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M`,
-		`int32_t lat; /* 1e-7 Grad */`,
+		`int32_t lat; /* 1e-7 degrees */`,
 		`host 192.168.1.1 privcheck:ok`,
 	}
 	for _, s := range clean {
 		if w := check(s); len(w) != 0 {
-			t.Errorf("Fehlalarm bei %q: %v", s, w)
+			t.Errorf("false alarm for %q: %v", s, w)
 		}
 	}
 }
