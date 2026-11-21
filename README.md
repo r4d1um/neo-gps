@@ -295,6 +295,16 @@ make bench    # throughput
 
 CI additionally builds with sanitizers and for AVR and Cortex-M0 with `-Werror`.
 
+## Disclaimer
+
+neo_gps is provided as is, without warranty (see [LICENSE](LICENSE)). GPS positions can be wrong, jump or be
+missing at any time, and the jump filter reduces but does not rule out bad positions. Do not use this library
+on its own for safety-critical purposes such as aviation, marine or rescue navigation, or anything where a wrong
+position can put people or property at risk.
+
+`examples/simulation/index.html` loads nothing from third-party servers (no web fonts, no CDNs), so it can be
+hosted publicly without passing visitors' data to anyone.
+
 ## License
 
 MIT

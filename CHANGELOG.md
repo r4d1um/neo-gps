@@ -5,6 +5,12 @@ Every version is published as release `v<version>` in
 [r4d1um/neo-gps](https://github.com/r4d1um/neo-gps/releases)
 (up to 1.2.0: `c/neo_gps/v<version>` in r4d1um/iot-lib-public).
 
+## 1.2.3
+
+- README: disclaimer (no warranty, not for safety-critical navigation on its own).
+- Simulation page loads no web fonts from Google any more (system fonts only), so it can be hosted
+  publicly without sending visitors' IP addresses to a third party. Code and API unchanged.
+
 ## 1.2.2
 
 - Everything in English: README, CHANGELOG, code comments, test and example output, workflows.

@@ -4,9 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Surveying a plot of land with GPS</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: survey report - header with key result, control bar, site plan + results panel, convergence curves below */
 :root {
@@ -25,6 +22,8 @@
   --warn: #a8690d;
   --bad: #b23a2c;
   --plot-fill: rgba(18, 122, 95, .07);
+  /* Fonts: locally installed ones only, nothing is loaded from third-party servers (no visitor data leaves
+     the page). The named fonts are used if the viewer has them installed, otherwise the system fonts. */
   --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
