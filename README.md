@@ -89,7 +89,7 @@ For each target there is `neo_gps-<version>-<target>.tar.gz` with `lib/libneo_gp
 | `linux-aarch64` | gcc 13.3 (`gcc-aarch64-linux-gnu`) | `-O2 -fPIC` | Pi 3/4/5 with 64-bit OS |
 | `linux-armv6hf` | gcc 13.3 (`gcc-arm-linux-gnueabihf`) | `-march=armv6+fp -mfpu=vfp -mfloat-abi=hard -marm` | every Pi with a 32-bit OS (including Pi 1 / Zero) |
 | `avr-atmega328p` | avr-gcc 7.3.0 (`gcc-avr`) | `-Os -mmcu=atmega328p` | Arduino Uno/Nano/Pro Mini |
-| `cortex-m0` | arm-none-eabi 13.2.rel1 (`gcc-arm-none-eabi`) | `-Os -mcpu=cortex-m0 -mthumb` | STM32F0 |
+| `cortex-m0` | Arm GNU Toolchain 13.2.Rel1 (Ubuntu: `gcc-arm-none-eabi`) | `-Os -mcpu=cortex-m0 -mthumb` | STM32F0 |
 | `cortex-m0plus` | arm-none-eabi 13.2.rel1 | `-Os -mcpu=cortex-m0plus -mthumb` | RP2040 (Pico / Pico W) |
 | `cortex-m3` | arm-none-eabi 13.2.rel1 | `-Os -mcpu=cortex-m3 -mthumb` | STM32F1 |
 | `cortex-m4f` | arm-none-eabi 13.2.rel1 | `-Os -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16` | STM32F4 |
@@ -129,7 +129,7 @@ On Debian/Ubuntu the cross toolchains are plain packages (the same ones CI uses)
 
 ```sh
 sudo apt-get install --no-install-recommends gcc-avr avr-libc binutils-avr \
-  gcc-arm-none-eabi libnewlib-arm-none-eabi binutils-arm-none-eabi \
+  gcc-arm-none-eabi libnewlib-arm-none-eabi libnewlib-dev binutils-arm-none-eabi \
   gcc-aarch64-linux-gnu libc6-dev-arm64-cross gcc-arm-linux-gnueabihf libc6-dev-armhf-cross \
   gcc-i686-linux-gnu libc6-dev-i386-cross cmake
 ```
