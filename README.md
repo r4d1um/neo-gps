@@ -129,7 +129,7 @@ On Debian/Ubuntu the cross toolchains are plain packages (the same ones CI uses)
 
 ```sh
 sudo apt-get install --no-install-recommends gcc-avr avr-libc binutils-avr \
-  gcc-arm-none-eabi libnewlib-arm-none-eabi binutils-arm-none-eabi \
+  gcc-arm-none-eabi libnewlib-arm-none-eabi libnewlib-dev binutils-arm-none-eabi \
   gcc-aarch64-linux-gnu libc6-dev-arm64-cross gcc-arm-linux-gnueabihf libc6-dev-armhf-cross \
   gcc-i686-linux-gnu libc6-dev-i386-cross cmake
 ```
