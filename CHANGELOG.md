@@ -1,29 +1,34 @@
 # Changelog neo_gps
 
-Versionen nach SemVer. Schnittstellen werden nur erweitert, nie umbenannt.
-Jede Version erscheint als Release `v<version>` in
+Versions follow SemVer. Interfaces are only extended, never renamed.
+Every version is published as release `v<version>` in
 [r4d1um/neo-gps](https://github.com/r4d1um/neo-gps/releases)
-(bis 1.2.0: `c/neo_gps/v<version>` in r4d1um/iot-lib-public).
+(up to 1.2.0: `c/neo_gps/v<version>` in r4d1um/iot-lib-public).
+
+## 1.2.2
+
+- Everything in English: README, CHANGELOG, code comments, test and example output, workflows.
+  Code and API unchanged.
 
 ## 1.2.1
 
-- Eigenes Repo [r4d1um/neo-gps](https://github.com/r4d1um/neo-gps), Releases jetzt als `v<version>`.
-  Code und API unverändert; die Releases bis 1.2.0 bleiben in r4d1um/iot-lib-public.
+- Own repo [r4d1um/neo-gps](https://github.com/r4d1um/neo-gps), releases now as `v<version>`.
+  Code and API unchanged; the releases up to 1.2.0 stay in r4d1um/iot-lib-public.
 
 ## 1.2.0
 
-- Ortszeit mit Zeitzone und Sommerzeit (`neo_gps_time.c/.h`), Unix-Zeit.
-- Beispiel: Gelände-Simulation für Fläche und Steigung mit vier Empfängern.
-- 2026-11-11: nach `iot-lib-public/c/neo_gps` umgezogen (vorher `r4d1um/lib`,
-  davor `r4d1um/gps-library-neo`). Grund: öffentliche, versionierte Releases
-  statt committeter Binaries. Die Historie wurde nicht übernommen, weil sie
-  private Autorendaten enthält. Code und API sind unverändert.
+- Local time with time zone and daylight saving time (`neo_gps_time.c/.h`), Unix time.
+- Example: terrain simulation for area and slope with four receivers.
+- 2026-11-11: moved to `iot-lib-public/c/neo_gps` (before: `r4d1um/lib`, earlier
+  `r4d1um/gps-library-neo`). Reason: public, versioned releases instead of committed
+  binaries. The history was not carried over because it contains private author data.
+  Code and API are unchanged.
 
 ## 1.1.0
 
-- Sprungfilter gegen GPS-Jumps (`neo_gps_filter.c`).
+- Jump filter against GPS jumps (`neo_gps_filter.c`).
 
 ## 1.0.0
 
-- Erste Version: Streaming-Parser für NMEA und UBX ohne malloc und ohne Float,
-  UBX-Konfiguration, Modellerkennung für NEO-6M, NEO-7M und NEO-M8N.
+- First version: streaming parser for NMEA and UBX without malloc and without float,
+  UBX configuration, model detection for NEO-6M, NEO-7M and NEO-M8N.

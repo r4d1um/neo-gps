@@ -1,8 +1,8 @@
 /*
- * neo_gps - Arduino-Beispiel (ESP32, Mega, Uno mit SoftwareSerial, RP2040 ...)
+ * neo_gps - Arduino example (ESP32, Mega, Uno with SoftwareSerial, RP2040 ...)
  *
- * Verkabelung:  Modul TX -> MCU RX,  Modul RX -> MCU TX,  VCC -> 3.3V/5V,  GND -> GND
- * Werkszustand aller drei Module: 9600 Baud, NMEA.
+ * Wiring:  module TX -> MCU RX,  module RX -> MCU TX,  VCC -> 3.3V/5V,  GND -> GND
+ * Factory default of all three modules: 9600 baud, NMEA.
  */
 #include <neo_gps.h>
 #include <neo_gps_time.h>
@@ -21,7 +21,7 @@
 #endif
 
 static neo_gps_t gps;
-static const neo_tz_t berlin = NEO_TZ_BERLIN;   // MEZ/MESZ, Sommerzeit automatisch
+static const neo_tz_t berlin = NEO_TZ_BERLIN;   // CET/CEST, DST automatic
 
 static void gps_write(void *user, const uint8_t *data, uint16_t len)
 {
@@ -35,10 +35,10 @@ void setup()
   GPS_BEGIN(9600);
   neo_gps_init(&gps, gps_write, NULL);
 
-  neo_gps_detect_model(&gps);                    // Antwort kommt asynchron in loop()
-  neo_gps_cfg_output(&gps, NEO_OUT_NMEA_MINIMAL); // nur RMC/GGA/GSA -> weniger CPU-Last
+  neo_gps_detect_model(&gps);                    // the answer arrives asynchronously in loop()
+  neo_gps_cfg_output(&gps, NEO_OUT_NMEA_MINIMAL); // only RMC/GGA/GSA -> less CPU load
   neo_gps_cfg_dynmodel(&gps, NEO_DYN_PEDESTRIAN);
-  neo_gps_filter_preset(&gps, NEO_FILTER_PEDESTRIAN); // GPS-Spruenge verwerfen, im Stand glaetten
+  neo_gps_filter_preset(&gps, NEO_FILTER_PEDESTRIAN); // reject GPS jumps, smooth while standing still
 }
 
 void loop()
@@ -46,8 +46,8 @@ void loop()
   while (GPS_SERIAL.available()) {
     neo_event_t ev = neo_gps_feed(&gps, (uint8_t)GPS_SERIAL.read());
     if (ev == NEO_EV_UBX_MON_VER) {
-      static const char *names[] = { "unbekannt", "NEO-6M", "NEO-7M", "NEO-M8N" };
-      Serial.print(F("Modul: "));
+      static const char *names[] = { "unknown", "NEO-6M", "NEO-7M", "NEO-M8N" };
+      Serial.print(F("Module: "));
       Serial.println(names[neo_gps_model(&gps)]);
     }
   }
@@ -58,25 +58,25 @@ void loop()
     neo_local_time_t lt;
     char buf[96];
     if (neo_gps_local_time(d, &berlin, &lt)) {
-      snprintf(buf, sizeof(buf), "%02u.%02u.%04u %02u:%02u:%02u %s  ",
-               lt.t.day, lt.t.month, lt.t.year, lt.t.hour, lt.t.minute, lt.t.second,
-               lt.is_dst ? "MESZ" : "MEZ");
+      snprintf(buf, sizeof(buf), "%04u-%02u-%02u %02u:%02u:%02u %s  ",
+               lt.t.year, lt.t.month, lt.t.day, lt.t.hour, lt.t.minute, lt.t.second,
+               lt.is_dst ? "CEST" : "CET");
       Serial.print(buf);
     }
-    // Ganzzahl-Ausgabe: exakt auch auf AVR (dort ist double nur 32 bit)
+    // integer output: exact even on AVR (where double is only 32 bit)
     snprintf(buf, sizeof(buf), "%s%ld.%07ld %s%ld.%07ld  sv=%u",
              d->lat < 0 ? "-" : "", labs(d->lat) / 10000000L, labs(d->lat) % 10000000L,
              d->lon < 0 ? "-" : "", labs(d->lon) / 10000000L, labs(d->lon) % 10000000L,
              d->num_sv);
     Serial.print(buf);
-    Serial.print(F("  Hoehe ")); Serial.print(neo_gps_alt_m(&gps), 1);
+    Serial.print(F("  alt ")); Serial.print(neo_gps_alt_m(&gps), 1);
     Serial.print(F(" m  ")); Serial.print(neo_gps_speed_kmh(&gps), 1);
     Serial.println(F(" km/h"));
   } else if (upd & NEO_UPD_REJECTED) {
-    static const char *why[] = { "", "Fix", "Satelliten", "HDOP", "Genauigkeit", "Sprung" };
-    Serial.print(F("Position verworfen: "));
+    static const char *why[] = { "", "fix", "satellites", "HDOP", "accuracy", "jump" };
+    Serial.print(F("Position rejected: "));
     Serial.println(why[gps.data.reject_reason]);
   } else if ((upd & NEO_UPD_FIX) && !neo_gps_has_fix(&gps)) {
-    Serial.println(F("Warte auf Fix ..."));
+    Serial.println(F("Waiting for fix ..."));
   }
 }

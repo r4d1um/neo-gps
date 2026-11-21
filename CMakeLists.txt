@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 
-# ESP-IDF: Ordner einfach nach components/neo_gps kopieren
+# ESP-IDF: simply copy the folder to components/neo_gps
 if(ESP_PLATFORM)
     idf_component_register(SRCS "src/neo_gps.c" "src/neo_gps_filter.c" "src/neo_gps_time.c" "src/neo_gps_util.c"
                            INCLUDE_DIRS "src")

@@ -1,7 +1,7 @@
-# Testen, alle Ziele einmal bauen und als Release v<VERSION> veroeffentlichen.
-# Ein neues Release entsteht nur, wenn NEO_GPS_VERSION in src/neo_gps.h erhoeht wurde
-# (Tags kommen aus diesem Workflow, nicht von Hand). Build und Release in einem Job:
-# gleiche Artefakte, keine doppelte Minuten-Rundung.
+# Test, build all targets once and publish them as release v<VERSION>.
+# A new release is only made when NEO_GPS_VERSION in src/neo_gps.h was raised
+# (tags come from this workflow, not by hand). Build and release in one job:
+# same artifacts, no double per-job minute rounding.
 name: ci
 
 on:
@@ -17,7 +17,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # PRs: alten Lauf abbrechen; main: nie mitten im Release abbrechen
+  # PRs: cancel the old run; main: never cancel in the middle of a release
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -25,11 +25,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
-      contents: write   # nur fuer den Release-Schritt
+      contents: write   # only for the release step
     steps:
       - uses: actions/checkout@v6   # Node 24
 
-      # Toolchains aus r4d1um/setup: einmal laden, dann aus dem Cache
+      # toolchains from r4d1um/setup: download once, then from the cache
       - uses: actions/cache@v5      # Node 24
         with:
           path: ~/.local/share/r4setup
@@ -38,7 +38,7 @@ jobs:
       - name: Toolchains
         run: tools/session-setup.sh
 
-      - name: Host-Tests
+      - name: Host tests
         run: make test
 
       - name: Sanitizer
@@ -47,7 +47,7 @@ jobs:
       - name: CMake
         run: cmake -S . -B cbuild && cmake --build cbuild && ctest --test-dir cbuild --output-on-failure
 
-      - name: Alle Ziele bauen, Linktest, Pakete
+      - name: Build all targets, link test, packages
         run: make -j"$(nproc)" package DIST_STRICT=1
 
       - name: Release
@@ -58,10 +58,10 @@ jobs:
           v=$(make -s print-version)
           tag="v$v"
           if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Release $tag gibt es schon - Version nicht erhoeht, nichts zu tun" >> "$GITHUB_STEP_SUMMARY"
+            echo "Release $tag already exists - version not raised, nothing to do" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          # Abschnitt der Version aus dem CHANGELOG als Release-Text
+          # the version's CHANGELOG section as release notes
           awk -v v="## $v" '$0==v{f=1;next} /^## /{f=0} f' CHANGELOG.md > build/notes.md
           gh release create "$tag" build/pkg/* --target "$GITHUB_SHA" --title "neo_gps $v" --notes-file build/notes.md
-          echo "Release $tag veroeffentlicht" >> "$GITHUB_STEP_SUMMARY"
+          echo "Release $tag published" >> "$GITHUB_STEP_SUMMARY"

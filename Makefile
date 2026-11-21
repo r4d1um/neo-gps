@@ -25,17 +25,17 @@ sim: $(SRC) examples/simulation/terrain_sim.c | build
 	$(CC) $(CFLAGS) -Isrc $(SRC) examples/simulation/terrain_sim.c -lm -o build/terrain_sim
 	./build/terrain_sim > build/sim.json
 	cp examples/simulation/index.html build/index.html
-	@echo "build/sim.json + build/index.html geschrieben - ansehen: cd build && python3 -m http.server"
+	@echo "build/sim.json + build/index.html written - view: cd build && python3 -m http.server"
 
 clean:
 	rm -rf build
 
 # ---------------------------------------------------------------------------
-# Fertige Binaries: dist/<ziel>/libneo_gps.a + dist/include/*.h
-# Wird in GitHub Actions einmal gebaut und nach dist/ committet; Projekte
-# kopieren nur die .a und die Header. Inkrementell: jede .c ist eine eigene .o,
-# nur geaenderte Quellen werden neu uebersetzt (ccache wird genutzt, wenn da).
-# Fehlt ein Cross-Compiler, wird das Ziel uebersprungen (DIST_STRICT=1: Fehler).
+# Prebuilt binaries: dist/<target>/libneo_gps.a + dist/include/*.h
+# Built once in GitHub Actions and attached to the release; projects only
+# take the .a and the headers. Incremental: every .c is its own .o, only
+# changed sources are recompiled (ccache is used if present).
+# If a cross compiler is missing the target is skipped (DIST_STRICT=1: error).
 # ---------------------------------------------------------------------------
 CCACHE    ?= $(shell command -v ccache 2>/dev/null)
 DIST       = dist
@@ -81,8 +81,8 @@ $(DIST)/$(1)/libneo_gps.a: $(patsubst src/%.c,build/dist/$(1)/%.o,$(SRC))
 
 dist-$(1):
 	+@if command -v $(CC_$(1)) >/dev/null 2>&1; then $(MAKE) --no-print-directory $(DIST)/$(1)/libneo_gps.a; \
-	 elif [ -n "$(DIST_STRICT)" ]; then echo "fehlt: $(CC_$(1))"; exit 1; \
-	 else echo "uebersprungen: $(1) ($(CC_$(1)) fehlt)"; fi
+	 elif [ -n "$(DIST_STRICT)" ]; then echo "missing: $(CC_$(1))"; exit 1; \
+	 else echo "skipped: $(1) ($(CC_$(1)) missing)"; fi
 endef
 $(foreach t,$(DIST_TARGETS),$(eval $(call DIST_RULES,$(t))))
 
@@ -94,7 +94,7 @@ $(DIST)/include/%.h: src/%.h
 dist: $(patsubst src/%,$(DIST)/include/%,$(DIST_HDR)) $(addprefix dist-,$(DIST_TARGETS))
 	@sed -n 's/^#define NEO_GPS_VERSION "\(.*\)"/\1/p' src/neo_gps.h > $(DIST)/VERSION
 
-# Linktest: Host-Tests gegen die fertige .a, Cortex-M0+ als Firmware gelinkt
+# Link test: host tests against the finished .a, Cortex-M0+ linked as firmware
 dist-check: dist | build
 	$(CC) $(CFLAGS) -I$(DIST)/include tests/test_neo_gps.c $(DIST)/linux-x86_64/libneo_gps.a -lm -o build/test_dist && ./build/test_dist
 	@if command -v arm-none-eabi-gcc >/dev/null 2>&1; then \
@@ -107,13 +107,13 @@ dist-check: dist | build
 	  avr-size build/link_avr.elf; fi
 
 # ---------------------------------------------------------------------------
-# Release-Pakete nach build/pkg/ (GitHub Actions haengt sie an das Release
+# Release packages to build/pkg/ (GitHub Actions attaches them to release
 # v<VERSION>):
-#   neo_gps-<v>-<ziel>.tar.gz  fertige .a + include/ + README + LICENSE
-#   neo_gps-<v>-src.tar.gz     Quellpaket fuer PlatformIO, Arduino, ESP-IDF, CMake
+#   neo_gps-<v>-<target>.tar.gz  finished .a + include/ + README + LICENSE
+#   neo_gps-<v>-src.tar.gz       source package for PlatformIO, Arduino, ESP-IDF, CMake
 #   SHA256SUMS
-# Archive deterministisch (feste Zeit, Besitzer, Sortierung), damit gleiche
-# Quellen gleiche Pakete ergeben.
+# Archives are deterministic (fixed time, owner, sort order), so the same
+# sources produce the same packages.
 # ---------------------------------------------------------------------------
 VERSION  := $(shell sed -n 's/^#define NEO_GPS_VERSION "\(.*\)"/\1/p' src/neo_gps.h)
 PKG       = build/pkg
@@ -132,12 +132,12 @@ package: dist-check version-check
 	  $(TAR_DET) -C build/stage -cf - neo_gps-$(VERSION)-src | gzip -n > $(PKG)/neo_gps-$(VERSION)-src.tar.gz
 	cd $(PKG) && sha256sum *.tar.gz > SHA256SUMS && cat SHA256SUMS
 
-# Version muss in Header, library.json, library.properties und CHANGELOG gleich sein
+# The version must be the same in header, library.json, library.properties and CHANGELOG
 version-check:
 	@grep -q '"version": "$(VERSION)"' library.json        || { echo "library.json: Version != $(VERSION)"; exit 1; }
 	@grep -q '^version=$(VERSION)$$' library.properties    || { echo "library.properties: Version != $(VERSION)"; exit 1; }
-	@grep -q '^## $(VERSION)' CHANGELOG.md                 || { echo "CHANGELOG.md: kein Eintrag fuer $(VERSION)"; exit 1; }
-	@echo "Version $(VERSION) ueberall gleich"
+	@grep -q '^## $(VERSION)' CHANGELOG.md                 || { echo "CHANGELOG.md: no entry for $(VERSION)"; exit 1; }
+	@echo "version $(VERSION) is the same everywhere"
 
 print-version:
 	@echo $(VERSION)

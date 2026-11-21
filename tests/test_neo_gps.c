@@ -1,4 +1,4 @@
-/* Host-Tests fuer neo_gps:  make test */
+/* Host tests for neo_gps:  make test */
 #include "neo_gps.h"
 #include "neo_gps_util.h"
 #include "neo_gps_time.h"
@@ -11,11 +11,11 @@
 static int fails, checks;
 #define CHECK(c) do { checks++; if (!(c)) { fails++; printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #c); } } while (0)
 #define CHECK_EQ(a, b) do { long long _a = (long long)(a), _b = (long long)(b); checks++; \
-    if (_a != _b) { fails++; printf("FAIL %s:%d: %s == %lld, erwartet %lld\n", __FILE__, __LINE__, #a, _a, _b); } } while (0)
+    if (_a != _b) { fails++; printf("FAIL %s:%d: %s == %lld, expected %lld\n", __FILE__, __LINE__, #a, _a, _b); } } while (0)
 
-/* --- Hilfen ------------------------------------------------------------- */
+/* --- Helpers ------------------------------------------------------------ */
 
-/* Body ohne $ und *CS -> kompletter Satz mit korrekter Pruefsumme */
+/* Body without $ and *CS -> complete sentence with correct checksum */
 static neo_event_t feed_nmea(neo_gps_t *g, const char *body)
 {
     char s[128];
@@ -70,7 +70,7 @@ static void test_rmc(void)
 {
     neo_gps_t g;
     neo_gps_init(&g, NULL, NULL);
-    /* Beispiel aus dem u-blox Protokollhandbuch */
+    /* Example from the u-blox protocol manual */
     CHECK_EQ(feed_str(&g, "$GPRMC,083559.00,A,4717.11437,N,00833.91522,E,0.004,77.52,091202,,,A*57\r\n"), NEO_EV_NMEA_RMC);
     CHECK_EQ(g.data.lat, 472852395);
     CHECK_EQ(g.data.lon, 85652537);
@@ -90,7 +90,7 @@ static void test_rmc(void)
         CHECK(u & NEO_UPD_DATE);
         CHECK_EQ(neo_gps_updates(&g), 0);
     }
-    /* 10 kn -> 5144 mm/s,  Sued/West */
+    /* 10 kn -> 5144 mm/s,  south/west */
     CHECK_EQ(feed_nmea(&g, "GNRMC,235959.40,A,3352.12800,S,15112.55800,W,10.000,359.99,311226,,,D"), NEO_EV_NMEA_RMC);
     CHECK_EQ(g.data.lat, -338688000);
     CHECK_EQ(g.data.lon, -1512093000);
@@ -98,7 +98,7 @@ static void test_rmc(void)
     CHECK_EQ(g.data.course, 35999000);
     CHECK_EQ(g.data.time.ms, 400);
     CHECK_EQ(g.data.time.year, 2026);
-    /* Kein Fix: Position bleibt erhalten, valid = 0 */
+    /* No fix: position is kept, valid = 0 */
     CHECK_EQ(feed_nmea(&g, "GPRMC,120000.00,V,,,,,,,301026,,,N"), NEO_EV_NMEA_RMC);
     CHECK(!g.data.valid);
     CHECK_EQ(g.data.fix, NEO_FIX_NONE);
@@ -138,7 +138,7 @@ static void test_gga_gsa_gsv_vtg(void)
     CHECK_EQ(g.data.course, 7752000);
     CHECK_EQ(g.data.speed, 2);
 
-    /* GGA ohne Fix */
+    /* GGA without fix */
     CHECK_EQ(feed_nmea(&g, "GPGGA,092726.00,,,,,0,00,99.99,,,,,,"), NEO_EV_NMEA_GGA);
     CHECK(!g.data.valid);
     CHECK_EQ(g.data.fix, NEO_FIX_NONE);
@@ -148,21 +148,21 @@ static void test_errors_and_resync(void)
 {
     neo_gps_t g;
     neo_gps_init(&g, NULL, NULL);
-    /* falsche Pruefsumme -> keine Uebernahme */
+    /* wrong checksum -> nothing taken over */
     CHECK_EQ(feed_str(&g, "$GPRMC,083559.00,A,4717.11437,N,00833.91522,E,0.004,77.52,091202,,,A*58\r\n"), NEO_EV_CHECKSUM_ERROR);
     CHECK_EQ(g.data.lat, 0);
     CHECK_EQ(g.msgs_err, 1);
-    /* abgebrochener Satz + Muell + gueltiger Satz */
+    /* truncated sentence + garbage + valid sentence */
     CHECK_EQ(feed_str(&g, "$GPRMC,0835\xff\x01garbage$GPRMC,083559.00,A,4717.11437,N,00833.91522,E,0.004,77.52,091202,,,A*57\r\n"),
              NEO_EV_NMEA_RMC);
     CHECK_EQ(g.data.lat, 472852395);
-    /* unbekannte Saetze werden still ignoriert */
+    /* unknown sentences are silently ignored */
     CHECK_EQ(feed_nmea(&g, "GPTXT,01,01,02,u-blox ag - www.u-blox.com"), NEO_EV_NONE);
     CHECK_EQ(feed_nmea(&g, "PUBX,00,081350.00,4717.113210,N"), NEO_EV_NONE);
-    /* ueberlanges Feld wird ignoriert, Rest des Satzes zaehlt */
+    /* overlong field is ignored, the rest of the sentence counts */
     CHECK_EQ(feed_nmea(&g, "GPGGA,092725.00,4717.1139999999999999,N,00833.91590,E,1,05,1.01,10.0,M,48.0,M,,"), NEO_EV_NMEA_GGA);
     CHECK_EQ(g.data.num_sv, 5);
-    CHECK_EQ(g.data.lat, 472852395); /* unveraendert, Feld war zu lang */
+    CHECK_EQ(g.data.lat, 472852395); /* unchanged, field was too long */
 }
 
 static void test_ubx_pvt(void)
@@ -203,18 +203,18 @@ static void test_ubx_pvt(void)
     CHECK_EQ(g.data.time.ms, 200);
     CHECK(g.data.valid);
 
-    /* u-blox 7: NAV-PVT nur 84 Byte */
+    /* u-blox 7: NAV-PVT only 84 bytes */
     p[23] = 9;
     CHECK_EQ(feed_ubx(&g, 0x01, 0x07, p, 84), NEO_EV_UBX_NAV_PVT);
     CHECK_EQ(g.data.num_sv, 9);
 
-    /* gnssFixOK = 0: Position bleibt, valid = 0 */
+    /* gnssFixOK = 0: position stays, valid = 0 */
     p[21] = 0; put32(p + 28, 1);
     CHECK_EQ(feed_ubx(&g, 0x01, 0x07, p, 92), NEO_EV_UBX_NAV_PVT);
     CHECK(!g.data.valid);
     CHECK_EQ(g.data.lat, 512345678);
 
-    /* kaputte UBX-Pruefsumme */
+    /* broken UBX checksum */
     {
         uint8_t f[128];
         size_t n = make_ubx(f, 0x01, 0x07, p, 92), i;
@@ -280,7 +280,7 @@ static void test_model_detect(void)
     memcpy(p + 30, "00070000", 8);
     CHECK_EQ(feed_ubx(&g, 0x0A, 0x04, p, 40), NEO_EV_UBX_MON_VER);
     CHECK_EQ(neo_gps_model(&g), NEO_MODEL_NEO7);
-    /* M8 mit Extensions -> laenger als Puffer, trotzdem erkannt */
+    /* M8 with extensions -> longer than the buffer, still recognised */
     memcpy(p + 30, "00080000", 8);
     memcpy(p + 40, "PROTVER=18.00", 13);
     CHECK_EQ(feed_ubx(&g, 0x0A, 0x04, p, sizeof(p)), NEO_EV_UBX_MON_VER);
@@ -312,7 +312,7 @@ static void test_tx_and_ack(void)
     neo_gps_detect_model(&g);
     CHECK(tx_len == sizeof(poll_ver) && memcmp(tx, poll_ver, sizeof(poll_ver)) == 0);
 
-    /* alle gesendeten Frames muessen vom eigenen Parser als gueltig erkannt werden */
+    /* every frame sent must be recognised as valid by our own parser */
     tx_len = 0;
     neo_gps_set_model(&g, NEO_MODEL_M8);
     neo_gps_cfg_port(&g, 115200, NEO_PROTO_UBX);
@@ -339,11 +339,11 @@ static void test_mixed_stream(void)
     const char *s2 = "$GPRMC,083559.00,A,4717.11437,N,00833.91522,E,0.004,77.52,091202,,,A*57\r\n";
     neo_gps_init(&g, NULL, NULL);
     memset(p, 0, sizeof(p));
-    p[0] = '$'; p[5] = '$'; p[6] = 0xB5;   /* Steuerzeichen in Binaerdaten duerfen nicht stoeren */
+    p[0] = '$'; p[5] = '$'; p[6] = 0xB5;   /* control characters in binary data must not interfere */
     put16(p + 12, 77);
     memcpy(buf + n, s1, strlen(s1)); n += strlen(s1);
     n += make_ubx(buf + n, 0x01, 0x04, p, 18);
-    buf[n++] = 0xB5;                        /* falscher Sync */
+    buf[n++] = 0xB5;                        /* wrong sync */
     memcpy(buf + n, s2, strlen(s2)); n += strlen(s2);
     CHECK_EQ(neo_gps_feed_buf(&g, buf, (uint16_t)n), 3);
     CHECK_EQ(g.data.hdop, 77);
@@ -359,7 +359,7 @@ static void test_util(void)
     g.data.time.year = 2026; g.data.time.month = 10; g.data.time.day = 30;
     g.data.time.hour = 14; g.data.time.minute = 5;
     CHECK_EQ(neo_gps_unix_time(&g.data), 1793369159UL);
-    /* Berlin Brandenburger Tor -> Muenchen Marienplatz ~ 504.2 km */
+    /* Berlin Brandenburg Gate -> Munich Marienplatz ~ 504.2 km */
     {
         float d = neo_gps_distance_m(525162940, 133777030, 481373260, 115754840);
         float f = neo_gps_distance_fast_m(525162940, 133777030, 481373260, 115754840);
@@ -367,14 +367,14 @@ static void test_util(void)
         CHECK(fabsf(d - 504200.0f) < 1500.0f);
         CHECK(fabsf(f - d) / d < 0.005f);
         CHECK(b > 190.0f && b < 200.0f);
-        /* Datumsgrenze */
+        /* date line */
         CHECK(neo_gps_distance_m(0, 1799999999, 0, -1799999999) < 30.0f);
     }
 }
 
-/* --- Filter ------------------------------------------------------------ */
+/* --- Filter ------------------------------------------------------------- */
 
-/* NAV-PVT mit den fuer den Filter relevanten Feldern */
+/* NAV-PVT with the fields relevant for the filter */
 static neo_event_t pvt(neo_gps_t *g, uint32_t itow, int32_t lat, int32_t lon,
                        uint32_t speed_mm, uint32_t hacc_mm, uint8_t sv)
 {
@@ -389,15 +389,15 @@ static neo_event_t pvt(neo_gps_t *g, uint32_t itow, int32_t lat, int32_t lon,
     return feed_ubx(g, 0x01, 0x07, p, 92);
 }
 
-#define M_LAT 90   /* ~1 m Breite in 1e-7 Grad (1e-7 Grad = 11.132 mm) */
+#define M_LAT 90   /* ~1 m of latitude in 1e-7 degrees (1e-7 degrees = 11.132 mm) */
 
 static void test_filter_off(void)
 {
     neo_gps_t g;
     neo_gps_init(&g, NULL, NULL);
     pvt(&g, 1000, 481000000, 115000000, 0, 2000, 10);
-    pvt(&g, 2000, 482000000, 115000000, 0, 2000, 10);       /* 11 km Sprung */
-    CHECK_EQ(g.data.lat, 482000000);                          /* ohne Filter: durchgereicht */
+    pvt(&g, 2000, 482000000, 115000000, 0, 2000, 10);       /* 11 km jump */
+    CHECK_EQ(g.data.lat, 482000000);                          /* without filter: passed through */
     CHECK_EQ(g.data.raw_lat, 482000000);
     CHECK_EQ(g.data.rejected, 0);
 }
@@ -410,13 +410,13 @@ static void test_filter_jump(void)
     neo_gps_init(&g, NULL, NULL);
     neo_gps_filter_preset(&g, NEO_FILTER_PEDESTRIAN);
 
-    /* gehen mit 1.4 m/s nach Norden, 1 Hz */
+    /* walking north at 1.4 m/s, 1 Hz */
     for (i = 0; i < 5; i++, t += 1000, lat += 126)
         pvt(&g, t, lat, 115000000, 1400, 3000, 10);
     CHECK_EQ(g.data.lat, lat - 126);
     neo_gps_updates(&g);
 
-    /* Multipath-Sprung um 80 m nach Osten */
+    /* multipath jump of 80 m to the east */
     pvt(&g, t, lat, 115000000 + 80 * 134, 1400, 3000, 10);
     {
         uint16_t u = neo_gps_updates(&g);
@@ -426,10 +426,10 @@ static void test_filter_jump(void)
     }
     CHECK_EQ(g.data.reject_reason, NEO_REJECT_JUMP);
     CHECK_EQ(g.data.rejected, 1);
-    CHECK_EQ(g.data.lat, lat - 126);                          /* alte Position bleibt */
+    CHECK_EQ(g.data.lat, lat - 126);                          /* old position stays */
     CHECK_EQ(g.data.raw_lon, 115000000 + 80 * 134);
 
-    /* naechste Epoche wieder normal -> akzeptiert (2 s seit letzter guter Position) */
+    /* next epoch normal again -> accepted (2 s since the last good position) */
     t += 1000; lat += 126;
     pvt(&g, t, lat + 126, 115000000, 1400, 3000, 10);
     CHECK(neo_gps_updates(&g) & NEO_UPD_POSITION);
@@ -443,7 +443,7 @@ static void test_filter_reanchor(void)
     neo_gps_init(&g, NULL, NULL);
     neo_gps_filter_preset(&g, NEO_FILTER_PEDESTRIAN);
     pvt(&g, t, 481000000, 115000000, 0, 3000, 10);
-    /* Modul war "falsch" verankert, echte Position 500 m weiter: nach 5 Epochen uebernommen */
+    /* module was anchored "wrongly", real position 500 m away: taken over after 5 epochs */
     for (i = 1; i <= 5; i++) {
         pvt(&g, t + i * 1000, 481000000 + 500 * M_LAT, 115000000, 0, 3000, 10);
         if (i < 5) CHECK_EQ(g.data.lat, 481000000);
@@ -460,12 +460,12 @@ static void test_filter_quality(void)
     pvt(&g, 1000, 481000000, 115000000, 0, 3000, 10);
     pvt(&g, 2000, 481000100, 115000000, 0, 45000, 10);        /* h_acc 45 m */
     CHECK_EQ(g.data.reject_reason, NEO_REJECT_ACCURACY);
-    pvt(&g, 3000, 481000100, 115000000, 0, 3000, 3);          /* 3 Satelliten */
+    pvt(&g, 3000, 481000100, 115000000, 0, 3000, 3);          /* 3 satellites */
     CHECK_EQ(g.data.reject_reason, NEO_REJECT_SATS);
     CHECK_EQ(g.data.lat, 481000000);
     CHECK_EQ(g.data.rejected, 2);
-    /* Qualitaets-Ablehnungen zaehlen nicht zum Neu-Verankern; gute Daten kommen durch */
-    pvt(&g, 4000, 481000100, 115000000, 1000, 3000, 10);    /* in Bewegung -> ungeglaettet */
+    /* quality rejections don't count towards re-anchoring; good data gets through */
+    pvt(&g, 4000, 481000100, 115000000, 1000, 3000, 10);    /* moving -> not smoothed */
     CHECK_EQ(g.data.lat, 481000100);
 }
 
@@ -475,18 +475,18 @@ static void test_filter_tunnel(void)
     neo_gps_init(&g, NULL, NULL);
     neo_gps_filter_preset(&g, NEO_FILTER_AUTOMOTIVE);
     pvt(&g, 10000, 481000000, 115000000, 15000, 3000, 10);   /* 54 km/h */
-    /* 60 s keine Position, dann 900 m weiter -> plausibel */
+    /* no position for 60 s, then 900 m further -> plausible */
     pvt(&g, 70000, 481000000 + 900 * M_LAT, 115000000, 15000, 3000, 10);
     CHECK_EQ(g.data.lat, 481000000 + 900 * M_LAT);
     CHECK_EQ(g.data.rejected, 0);
-    /* Wochenwechsel von iTOW (604800000 -> 0) */
+    /* iTOW week rollover (604800000 -> 0) */
     pvt(&g, 604799000, 481000000 + 900 * M_LAT, 115000000, 0, 3000, 10);
     pvt(&g, 0, 481000000 + 900 * M_LAT, 115000000, 0, 3000, 10);
     CHECK_EQ(g.data.rejected, 0);
-    /* ueber die Datumsgrenze im Stand */
+    /* across the date line while standing still */
     neo_gps_filter_reset(&g);
     pvt(&g, 1000, 0, 1799999990, 0, 2000, 10);
-    pvt(&g, 2000, 0, -1799999990, 0, 2000, 10);              /* ~2 m entfernt */
+    pvt(&g, 2000, 0, -1799999990, 0, 2000, 10);              /* ~2 m away */
     CHECK_EQ(g.data.rejected, 0);
     CHECK(g.data.lon > 1799999980 || g.data.lon < -1799999980);
 }
@@ -498,18 +498,18 @@ static void test_filter_smoothing(void)
     int32_t maxdev = 0;
     neo_gps_init(&g, NULL, NULL);
     neo_gps_filter_preset(&g, NEO_FILTER_STATIONARY);
-    /* im Stand +/- 3 m Rauschen um einen festen Punkt */
+    /* standing still: +/- 3 m noise around a fixed point */
     for (i = 0; i < 60; i++) {
         int32_t noise = (i & 1) ? 3 * M_LAT : -3 * M_LAT;
         int32_t dev;
         pvt(&g, 1000 + i * 1000, 481000000 + noise, 115000000, 0, 2500, 10);
         dev = g.data.lat - 481000000;
         if (dev < 0) dev = -dev;
-        if (i > 45 && dev > maxdev) maxdev = dev;   /* nach dem Einschwingen */
+        if (i > 45 && dev > maxdev) maxdev = dev;   /* after settling */
     }
-    CHECK(maxdev < M_LAT / 2 + 1);          /* geglaettet: < 0.5 m statt 3 m */
+    CHECK(maxdev < M_LAT / 2 + 1);          /* smoothed: < 0.5 m instead of 3 m */
     CHECK_EQ(g.data.rejected, 0);
-    /* bei Bewegung keine Glaettung (keine Verzoegerung) */
+    /* no smoothing while moving (no lag) */
     pvt(&g, 70000, 481000000 + 2 * M_LAT, 115000000, 2000, 2500, 10);
     CHECK_EQ(g.data.lat, 481000000 + 2 * M_LAT);
 }
@@ -523,27 +523,27 @@ static void test_filter_nmea(void)
     feed_nmea(&g, "GNGGA,100000.00,4800.00000,N,01130.00000,E,1,09,0.9,500.0,M,48.0,M,,");
     feed_nmea(&g, "GNGSA,A,3,01,02,03,04,05,06,07,08,09,,,,1.5,0.9,1.2");
     CHECK_EQ(g.data.lat, 480000000);
-    /* 200 m Sprung in RMC + GGA derselben Epoche: einmal verworfen, Hoehe bleibt */
+    /* 200 m jump in RMC + GGA of the same epoch: rejected once, altitude stays */
     feed_nmea(&g, "GNRMC,100001.00,A,4800.10800,N,01130.00000,E,2.000,0.0,301026,,,A");
     feed_nmea(&g, "GNGGA,100001.00,4800.10800,N,01130.00000,E,1,09,0.9,650.0,M,48.0,M,,");
     CHECK_EQ(g.data.lat, 480000000);
     CHECK_EQ(g.data.alt_msl, 500000);
     CHECK_EQ(g.data.rejected, 1);
     CHECK_EQ(g.data.reject_reason, NEO_REJECT_JUMP);
-    /* normale Epoche: RMC und GGA akzeptiert, Hoehe aktualisiert */
+    /* normal epoch: RMC and GGA accepted, altitude updated */
     feed_nmea(&g, "GNRMC,100002.00,A,4800.00060,N,01130.00000,E,2.000,0.0,301026,,,A");
     feed_nmea(&g, "GNGGA,100002.00,4800.00060,N,01130.00000,E,1,09,0.9,501.0,M,48.0,M,,");
     CHECK_EQ(g.data.lat, 480000100);
     CHECK_EQ(g.data.alt_msl, 501000);
-    /* Mitternacht: Zeit springt 23:59:59 -> 00:00:00 */
+    /* midnight: time jumps 23:59:59 -> 00:00:00 */
     neo_gps_filter_reset(&g);
     feed_nmea(&g, "GNRMC,235959.00,A,4800.00060,N,01130.00000,E,2.000,0.0,301026,,,A");
     feed_nmea(&g, "GNRMC,000000.00,A,4800.00090,N,01130.00000,E,2.000,0.0,311026,,,A");
-    CHECK_EQ(g.data.rejected, 1);           /* unveraendert */
+    CHECK_EQ(g.data.rejected, 1);           /* unchanged */
     CHECK_EQ(g.data.lat, 480000150);
 }
 
-/* --- Zeitzonen --------------------------------------------------------- */
+/* --- Time zones -------------------------------------------------------- */
 
 static void set_utc(neo_gps_t *g, uint16_t y, uint8_t mo, uint8_t d, uint8_t h, uint8_t mi, uint8_t s)
 {
@@ -565,18 +565,18 @@ static void test_time_berlin(void)
     neo_local_time_t lt;
     neo_gps_init(&g, NULL, NULL);
 
-    /* noch keine gueltige Zeit */
+    /* no valid time yet */
     CHECK_EQ(neo_gps_local_time(&g.data, &berlin, &lt), 0);
 
-    /* Winterzeit: UTC+1 */
+    /* winter time: UTC+1 */
     set_utc(&g, 2026, 1, 15, 12, 0, 0);
     CHECK_EQ(neo_gps_local_time(&g.data, &berlin, &lt), 1);
     CHECK_LT(lt, 2026, 1, 15, 13, 0, 0, 0);
     CHECK_EQ(lt.offset_min, 60);
     CHECK_EQ(lt.t.ms, 250);
-    CHECK_EQ(lt.weekday, 4);                       /* Donnerstag */
+    CHECK_EQ(lt.weekday, 4);                       /* Thursday */
 
-    /* Sommerzeitbeginn 29.03.2026: 02:00 MEZ -> 03:00 MESZ (= 01:00 UTC) */
+    /* DST start 2026-03-29: 02:00 CET -> 03:00 CEST (= 01:00 UTC) */
     set_utc(&g, 2026, 3, 29, 0, 59, 59);
     neo_gps_local_time(&g.data, &berlin, &lt);
     CHECK_LT(lt, 2026, 3, 29, 1, 59, 59, 0);
@@ -585,7 +585,7 @@ static void test_time_berlin(void)
     CHECK_LT(lt, 2026, 3, 29, 3, 0, 0, 1);
     CHECK_EQ(lt.offset_min, 120);
 
-    /* Sommerzeitende 25.10.2026: 03:00 MESZ -> 02:00 MEZ (= 01:00 UTC) */
+    /* DST end 2026-10-25: 03:00 CEST -> 02:00 CET (= 01:00 UTC) */
     set_utc(&g, 2026, 10, 25, 0, 59, 59);
     neo_gps_local_time(&g.data, &berlin, &lt);
     CHECK_LT(lt, 2026, 10, 25, 2, 59, 59, 1);
@@ -593,12 +593,12 @@ static void test_time_berlin(void)
     neo_gps_local_time(&g.data, &berlin, &lt);
     CHECK_LT(lt, 2026, 10, 25, 2, 0, 0, 0);
 
-    /* Tageswechsel durch die Umrechnung: 30.10.2026 23:30 UTC = Sa 31.10. 00:30 MEZ */
+    /* day change through the conversion: 2026-10-30 23:30 UTC = Sat 2026-10-31 00:30 CET */
     set_utc(&g, 2026, 10, 30, 23, 30, 0);
     neo_gps_local_time(&g.data, &berlin, &lt);
     CHECK_LT(lt, 2026, 10, 31, 0, 30, 0, 0);
     CHECK_EQ(lt.weekday, 6);
-    /* Silvester -> Neujahr, Schaltjahr */
+    /* New Year's Eve -> New Year, leap year */
     set_utc(&g, 2027, 12, 31, 23, 0, 0);
     neo_gps_local_time(&g.data, &berlin, &lt);
     CHECK_LT(lt, 2028, 1, 1, 0, 0, 0, 0);
@@ -606,7 +606,7 @@ static void test_time_berlin(void)
     neo_gps_local_time(&g.data, &berlin, &lt);
     CHECK_LT(lt, 2028, 2, 29, 0, 30, 0, 0);
 
-    /* direkt aus NMEA */
+    /* directly from NMEA */
     neo_gps_init(&g, NULL, NULL);
     feed_nmea(&g, "GNRMC,103000.50,A,5231.00000,N,01324.00000,E,0.0,0.0,150726,,,A");
     CHECK_EQ(neo_gps_local_time(&g.data, &berlin, &lt), 1);
@@ -633,7 +633,7 @@ static void test_time_parse(void)
     CHECK(neo_tz_parse(&tz, "IST-5:30") && tz.std_offset == 330 && tz.dst_offset == 330);
     CHECK(neo_tz_parse(&tz, "<+0545>-5:45") && tz.std_offset == 345);
     CHECK(neo_tz_parse(&tz, "EST5EDT,M3.2.0,M11.1.0") && tz.std_offset == -300 && tz.dst_offset == -240);
-    /* ungueltig / nicht unterstuetzt: tz bleibt unveraendert */
+    /* invalid / not supported: tz stays unchanged */
     tz = berlin;
     CHECK(!neo_tz_parse(&tz, "CET"));
     CHECK(!neo_tz_parse(&tz, "CET-1CEST"));
@@ -646,18 +646,18 @@ static void test_time_parse(void)
 }
 
 #if defined(__unix__) || defined(__APPLE__)
-/* Vergleich mit der glibc-Zeitzonenlogik ueber 1971..2105 */
+/* Comparison with glibc's time zone logic over 1971..2105 */
 static void test_time_vs_libc(void)
 {
     static const char *zones[] = {
         "CET-1CEST,M3.5.0,M10.5.0/3",              /* Berlin              */
         "GMT0BST,M3.5.0/1,M10.5.0",                /* London              */
         "EST5EDT,M3.2.0,M11.1.0",                  /* New York            */
-        "AEST-10AEDT,M10.1.0,M4.1.0/3",            /* Sydney (Suedhalbk.) */
+        "AEST-10AEDT,M10.1.0,M4.1.0/3",            /* Sydney (south. hem.) */
         "<+1030>-10:30<+11>-11,M10.1.0,M4.1.0",    /* Lord Howe: 30 min   */
-        "<-04>4<-03>,M9.1.6/24,M4.1.6/24",         /* Chile: Umschalten 24:00 */
-        "<-02>2<-01>,M3.5.0/-1,M10.5.0/0",         /* Groenland: negative Zeit */
-        "IST-5:30",                                /* Indien, keine Sommerzeit */
+        "<-04>4<-03>,M9.1.6/24,M4.1.6/24",         /* Chile: switch at 24:00 */
+        "<-02>2<-01>,M3.5.0/-1,M10.5.0/0",         /* Greenland: negative time */
+        "IST-5:30",                                /* India, no DST */
     };
     unsigned z, bad = 0;
     for (z = 0; z < sizeof(zones) / sizeof(zones[0]); z++) {
@@ -667,7 +667,7 @@ static void test_time_vs_libc(void)
         CHECK(neo_tz_parse(&tz, zones[z]));
         setenv("TZ", zones[z], 1);
         tzset();
-        for (t = 31536000UL; t < 4290000000UL; t += 2999u, n++) {   /* 2999 s: wandert durch alle Uhrzeiten */
+        for (t = 31536000UL; t < 4290000000UL; t += 2999u, n++) {   /* 2999 s: walks through all times of day */
             time_t tt = (time_t)t;
             struct tm ref;
             neo_datetime_t dt;
@@ -685,11 +685,11 @@ static void test_time_vs_libc(void)
                            ref.tm_year + 1900, ref.tm_mon + 1, ref.tm_mday, ref.tm_hour, ref.tm_min, ref.tm_isdst);
             }
         }
-        /* jede Umschaltung minutengenau: 2 h um alle Wechsel herum, Minute fuer Minute */
+        /* every switch to the minute: 2 h around each change, minute by minute */
         {
             int16_t prev_off = 0;
             uint8_t first = 1;
-            for (t = 946684800UL; t < 2524608000UL; t += 1800u) {     /* 2000..2050 in 30-min-Schritten */
+            for (t = 946684800UL; t < 2524608000UL; t += 1800u) {     /* 2000..2050 in 30-min steps */
                 int16_t off;
                 neo_tz_utc_to_local(&tz, t, &off, NULL);
                 if (!first && off != prev_off) {
@@ -706,7 +706,7 @@ static void test_time_vs_libc(void)
                 prev_off = off; first = 0;
             }
         }
-        if (zbad) printf("  %s: %u von %u falsch\n", zones[z], zbad, n);
+        if (zbad) printf("  %s: %u of %u wrong\n", zones[z], zbad, n);
         bad += zbad;
     }
     unsetenv("TZ");
@@ -726,7 +726,7 @@ static void bench(void)
     neo_gps_init(&g, NULL, NULL);
     t0 = clock();
     for (it = 0; it < 200000; it++) { for (i = 0; i < len; i++) neo_gps_feed(&g, (uint8_t)s[i]); total += len; }
-    printf("Benchmark: %.1f MB/s NMEA, sizeof(neo_gps_t) = %u Byte\n",
+    printf("Benchmark: %.1f MB/s NMEA, sizeof(neo_gps_t) = %u bytes\n",
            (double)total / ((double)(clock() - t0) / CLOCKS_PER_SEC) / 1e6, (unsigned)sizeof(neo_gps_t));
 }
 
@@ -753,7 +753,7 @@ int main(void)
 #if defined(__unix__) || defined(__APPLE__)
     test_time_vs_libc();
 #endif
-    printf("%d/%d Checks bestanden\n", checks - fails, checks);
+    printf("%d/%d checks passed\n", checks - fails, checks);
     if (getenv("NEO_BENCH")) bench();
     return fails ? 1 : 0;
 }

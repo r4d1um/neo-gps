@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Grundstücksvermessung per GPS</title>
+<title>Surveying a plot of land with GPS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: Vermessungsprotokoll - Kopf mit Kernaussage, Steuerleiste, Lageplan + Ergebnistafel, darunter Konvergenzkurven */
+/* Layout: survey report - header with key result, control bar, site plan + results panel, convergence curves below */
 :root {
-  --bg: #f2f4f1;          /* Kartenpapier, leicht gruenstichig */
+  --bg: #f2f4f1;          /* map paper, slightly green */
   --panel: #fbfcfa;
   --ink: #1b2624;
   --ink-2: #4c5a57;
@@ -18,9 +18,9 @@
   --rule: #d5dcd7;
   --grid: #e3e8e4;
   --truth: #1b2624;
-  --m-seq: #a8690d;       /* ein Geraet nacheinander - Ocker */
-  --m-snap: #3f63a6;      /* Einzelmoment - Schieferblau */
-  --m-sync: #127a5f;      /* gleichzeitig gemittelt - Vermessungsgruen */
+  --m-seq: #a8690d;       /* one device in turn - ochre */
+  --m-snap: #3f63a6;      /* single moment - slate blue */
+  --m-sync: #127a5f;      /* simultaneous, averaged - survey green */
   --good: #127a5f;
   --warn: #a8690d;
   --bad: #b23a2c;
@@ -69,7 +69,7 @@ p { margin: 0; max-width: 68ch; }
 header { display: flex; flex-direction: column; gap: 12px; }
 .lede { color: var(--ink-2); font-size: 16px; }
 
-/* Kernaussage: Tabelle nach 24 h */
+/* Key result: table after 24 h */
 .summary { overflow-x: auto; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--rule); }
 .summary table { width: 100%; border-collapse: collapse; min-width: 560px; }
 .summary th, .summary td { padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--rule); white-space: nowrap; }
@@ -80,7 +80,7 @@ header { display: flex; flex-direction: column; gap: 12px; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: 0; }
 .caption { font-size: 13px; color: var(--ink-3); }
 
-/* Steuerleiste */
+/* Control bar */
 .controls { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px 28px; padding: 18px; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; }
 .ctl { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .ctl label, .ctl .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
@@ -100,7 +100,7 @@ input[type=range] { width: 100%; accent-color: var(--m-sync); }
 .seg button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--m-snap); outline-offset: 2px; }
 .method-note { font-size: 13.5px; color: var(--ink-2); }
 
-/* Hauptbereich */
+/* Main area */
 .main { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .sheet { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 14px; min-width: 0; }
 .sheet-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -143,7 +143,7 @@ code { font-family: var(--font-mono); font-size: 13px; background: var(--grid); 
 @media (prefers-reduced-motion: no-preference) {
   .est-poly, .est-dot { transition: all .25s ease; }
 }
-/* Rechenfortschritt, solange der Pi noch simuliert */
+/* Progress while the simulation is still running */
 .progress { display: flex; flex-direction: column; gap: 12px; padding: 22px; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; }
 .bar { height: 10px; background: var(--grid); border-radius: 5px; overflow: hidden; }
 .bar > i { display: block; height: 100%; width: 0; background: var(--m-sync); transition: width .6s ease; }
@@ -155,97 +155,97 @@ code { font-family: var(--font-mono); font-size: 13px; background: var(--grid); 
 
 <div class="wrap">
   <header>
-    <div class="eyebrow" id="eyebrow">neo_gps · Simulation · 4 × NEO-M8N</div>
-    <h1>Grundstücksvermessung per GPS</h1>
-    <p class="lede">Vier simulierte GPS-Module stehen an den Ecken eines Hanggrundstücks. Ihre UBX-Datenströme laufen durch die echte <span class="mono">neo_gps</span>-Library samt Sprungfilter. Wie genau lassen sich daraus Fläche und Steigung bestimmen, und wie lange muss man dafür messen?</p>
+    <div class="eyebrow" id="eyebrow">neo_gps · simulation · 4 × NEO-M8N</div>
+    <h1>Surveying a plot of land with GPS</h1>
+    <p class="lede">Four simulated GPS modules stand at the corners of a sloping plot. Their UBX data streams run through the real <span class="mono">neo_gps</span> library including its jump filter. How accurately can area and slope be determined from them, and how long do you have to measure?</p>
   </header>
 
   <section class="progress" id="progress" aria-live="polite">
-    <h2 id="progTitle">Ergebnisse werden geladen</h2>
+    <h2 id="progTitle">Loading results</h2>
     <div class="bar" aria-hidden="true"><i id="progBar"></i></div>
     <p class="num" id="progText"></p>
   </section>
 
   <div id="app" class="app" hidden>
-  <section class="summary" aria-label="Ergebnis nach 24 Stunden">
+  <section class="summary" aria-label="Result after 24 hours">
     <table>
-      <thead><tr><th>Nach 24 h Messdauer</th><th>Fläche · Median</th><th>Fläche · 90 %</th><th>Steigung · Median</th><th>Steigung · 90 %</th><th>Richtung · Median</th></tr></thead>
+      <thead><tr><th>After 24 h of measuring</th><th>Area · median</th><th>Area · 90 %</th><th>Slope · median</th><th>Slope · 90 %</th><th>Direction · median</th></tr></thead>
       <tbody id="sumBody"></tbody>
     </table>
   </section>
   <p class="caption" id="sumCaption"></p>
 
-  <section class="controls" aria-label="Einstellungen">
+  <section class="controls" aria-label="Settings">
     <div class="ctl">
-      <label for="dur">Messdauer</label>
+      <label for="dur">Measuring time</label>
       <div class="dur"><output id="durOut" for="dur">1 h</output><span class="sub" id="durSub"></span></div>
       <input type="range" id="dur" min="0" max="100" step="1" value="50">
       <div class="ticks" aria-hidden="true"><span>4 s</span><span>1 min</span><span>10 min</span><span>1 h</span><span>6 h</span><span>24 h</span></div>
     </div>
     <div class="ctl">
-      <span class="lbl" id="mLbl">Vorgehen</span>
+      <span class="lbl" id="mLbl">Approach</span>
       <div class="seg" role="group" aria-labelledby="mLbl" id="methods"></div>
       <p class="method-note" id="methodNote"></p>
     </div>
     <div class="ctl">
-      <span class="lbl" id="exLbl">Beispiellauf</span>
+      <span class="lbl" id="exLbl">Example run</span>
       <div class="seg" role="group" aria-labelledby="exLbl" id="examples"></div>
     </div>
     <div class="ctl">
-      <span class="lbl" id="clLbl">Messpunkte im Plan</span>
+      <span class="lbl" id="clLbl">Points in the plan</span>
       <div class="seg" role="group" aria-labelledby="clLbl" id="clouds"></div>
     </div>
   </section>
 
   <section class="main">
     <div class="sheet">
-      <div class="sheet-head"><h2>Lageplan</h2><span class="eyebrow" id="planInfo"></span></div>
-      <svg id="plan" viewBox="0 0 640 560" role="img" aria-label="Lageplan mit wahrer und gemessener Grundstücksgrenze"></svg>
+      <div class="sheet-head"><h2>Site plan</h2><span class="eyebrow" id="planInfo"></span></div>
+      <svg id="plan" viewBox="0 0 640 560" role="img" aria-label="Site plan with true and measured plot boundary"></svg>
       <div class="legend" id="planLegend"></div>
     </div>
     <div class="results">
       <div class="kv" id="kv"></div>
       <div class="sheet">
-        <div class="sheet-head"><h3>Höhen der Eckpunkte</h3><span class="eyebrow">relativ zum Mittel</span></div>
-        <svg id="heights" viewBox="0 0 420 220" role="img" aria-label="Höhen der Eckpunkte wahr und gemessen"></svg>
-        <div class="legend"><span><i class="lg-line lg-dash" style="border-color:var(--truth)"></i>wahr</span><span><i class="lg-line" id="hLegend"></i>gemessen</span></div>
+        <div class="sheet-head"><h3>Corner heights</h3><span class="eyebrow">relative to the mean</span></div>
+        <svg id="heights" viewBox="0 0 420 220" role="img" aria-label="Corner heights, true and measured"></svg>
+        <div class="legend"><span><i class="lg-line lg-dash" style="border-color:var(--truth)"></i>true</span><span><i class="lg-line" id="hLegend"></i>measured</span></div>
       </div>
     </div>
   </section>
 
   <section class="charts">
     <div class="sheet">
-      <div class="sheet-head"><h3>Fehler der Fläche</h3><span class="eyebrow">m² · 100 Läufe</span></div>
-      <svg id="cArea" viewBox="0 0 520 300" role="img" aria-label="Flächenfehler über der Messdauer"></svg>
-      <p>Linie: Median. Band: bis zum 90-%-Quantil, 9 von 10 Läufen liegen darunter.</p>
+      <div class="sheet-head"><h3>Area error</h3><span class="eyebrow">m² · 100 runs</span></div>
+      <svg id="cArea" viewBox="0 0 520 300" role="img" aria-label="Area error over measuring time"></svg>
+      <p>Line: median. Band: up to the 90 % quantile, 9 out of 10 runs are below it.</p>
     </div>
     <div class="sheet">
-      <div class="sheet-head"><h3>Fehler der Steigung</h3><span class="eyebrow">%-Punkte · 100 Läufe</span></div>
-      <svg id="cSlope" viewBox="0 0 520 300" role="img" aria-label="Steigungsfehler über der Messdauer"></svg>
-      <p>Wahre Steigung: 8 %. Ein Fehler von 2 %-Punkten heißt also 6 bis 10 %.</p>
+      <div class="sheet-head"><h3>Slope error</h3><span class="eyebrow">percentage points · 100 runs</span></div>
+      <svg id="cSlope" viewBox="0 0 520 300" role="img" aria-label="Slope error over measuring time"></svg>
+      <p>True slope: 8 %. An error of 2 percentage points therefore means 6 to 10 %.</p>
     </div>
   </section>
 
   <section class="notes">
     <div>
-      <h3>Was die Simulation zeigt</h3>
+      <h3>What the simulation shows</h3>
       <ul>
-        <li>GPS-Fehler aus Atmosphäre und Satellitenbahnen sind für nahe Empfänger fast gleich. Messen alle vier Sensoren <strong>gleichzeitig</strong>, verschieben diese Fehler das ganze Viereck, ändern aber weder Fläche noch Steigung.</li>
-        <li>Ein einzelnes Gerät, das von Ecke zu Ecke getragen wird, misst jede Ecke zu einer anderen Zeit. Der gemeinsame Fehler wandert in dieser Zeit und verzerrt die Form. Längeres Messen hilft da erst nach vielen Stunden.</li>
-        <li>Was bleibt, ist Mehrwege-Empfang (Reflexionen an Haus, Zaun, Bäumen) an jedem einzelnen Standort. Er mittelt sich über Stunden weitgehend heraus, ein Rest bleibt. Deshalb wird die Steigung nie richtig genau: Die Höhe ist bei GPS etwa doppelt so unsicher wie die Lage, und 8 % Gefälle sind auf 30 m nur 2,4 m Höhenunterschied.</li>
-        <li>Der Sprungfilter der Library hat in allen Läufen die eingestreuten Ausreißer verworfen: <span class="num" id="jumpStat"></span>.</li>
+        <li>GPS errors from the atmosphere and satellite orbits are almost the same for receivers close together. If all four sensors measure <strong>at the same time</strong>, these errors shift the whole quadrilateral but change neither area nor slope.</li>
+        <li>A single device carried from corner to corner measures each corner at a different time. The common error drifts during that time and distorts the shape. Measuring longer only helps after many hours.</li>
+        <li>What remains is multipath reception (reflections off house, fence, trees) at each individual spot. It largely averages out over hours, a residue remains. That is why the slope never gets really accurate: with GPS the height is about twice as uncertain as the position, and an 8 % slope over 30 m is only 2.4 m of height difference.</li>
+        <li>In all runs the library's jump filter rejected the injected outliers: <span class="num" id="jumpStat"></span>.</li>
       </ul>
     </div>
     <div>
-      <h3>Annahmen und Reproduktion</h3>
-      <p>Grundstück: 4 Ecken, <span class="num" id="truthArea"></span> m², Gefälle <span class="num">8 %</span> nach Süd-Südost. Start der simulierten Messung laut Library-Ortszeit: <span class="num" id="startTime"></span>.</p>
+      <h3>Assumptions and reproduction</h3>
+      <p>Plot: 4 corners, <span class="num" id="truthArea"></span> m², slope <span class="num">8 %</span> towards south-southeast. Start of the simulated measurement according to the library's local time: <span class="num" id="startTime"></span>.</p>
       <details>
-        <summary>Fehlermodell (Annahmen, keine Messwerte)</summary>
+        <summary>Error model (assumptions, not measured values)</summary>
         <div class="model"><table id="modelTable"></table></div>
       </details>
       <details>
-        <summary>Selbst nachrechnen</summary>
-        <p style="margin-top:8px">Der Simulator liegt unter <code>examples/simulation/terrain_sim.c</code>. <code>make sim</code> erzeugt <code>build/sim.json</code> und diese Seite daneben; <code>cd build &amp;&amp; python3 -m http.server</code> zeigt sie an. Grundstück, Fehlermodell und Anzahl der Läufe stehen oben in der Datei.</p>
+        <summary>Recompute it yourself</summary>
+        <p style="margin-top:8px">The simulator is in <code>examples/simulation/terrain_sim.c</code>. <code>make sim</code> creates <code>build/sim.json</code> and this page next to it; <code>cd build &amp;&amp; python3 -m http.server</code> shows it. Plot, error model and number of runs are at the top of the file.</p>
       </details>
     </div>
   </section>
@@ -253,8 +253,8 @@ code { font-family: var(--font-mono); font-size: 13px; background: var(--grid); 
 </div>
 
 <script>
-/* Daten: sim.json neben dieser Seite. Fehlt sie noch (der Pi rechnet), zeigt
-   status.json den Fortschritt; die Seite fragt alle 5 s nach. */
+/* Data: sim.json next to this page. If it is still missing (simulation running),
+   status.json shows the progress; the page checks again every 5 s. */
 function setProgress(title, text, frac) {
   document.getElementById("progTitle").textContent = title;
   document.getElementById("progText").textContent = text;
@@ -267,19 +267,19 @@ async function getJSON(url) {
 }
 async function load() {
   let st = null;
-  try { st = await getJSON("status.json"); } catch (e) { /* lokal ohne Pi: kein status.json */ }
+  try { st = await getJSON("status.json"); } catch (e) { /* run locally: no status.json */ }
   if (st && st.state === "running") {
     const f = st.total ? st.done / st.total : 0;
     const what = st.phase === "examples"
-      ? `Alle ${st.total} simulierten Tage fertig, die zwei Beispieltage werden aufbereitet`
-      : `Simulierter Tag ${st.done} von ${st.total}`;
-    setProgress("Der Pi rechnet die Simulation",
-      `${what} · gestartet ${st.started || ""} · Library ${(st.commit || "").slice(0, 7)} · die Seite aktualisiert sich von selbst`, f);
+      ? `All ${st.total} simulated days done, preparing the two example days`
+      : `Simulated day ${st.done} of ${st.total}`;
+    setProgress("Running the simulation",
+      `${what} · started ${st.started || ""} · library ${(st.commit || "").slice(0, 7)} · the page updates by itself`, f);
     setTimeout(load, 5000);
     return;
   }
   if (st && st.state === "failed") {
-    setProgress("Simulation fehlgeschlagen", st.error || "Details: docker logs des Dienstes", 0);
+    setProgress("Simulation failed", st.error || "Details: the service's docker logs", 0);
     document.getElementById("progText").className = "num err";
     setTimeout(load, 30000);
     return;
@@ -290,7 +290,7 @@ async function load() {
     document.getElementById("app").hidden = false;
     app(data, st);
   } catch (e) {
-    setProgress("Keine Ergebnisse gefunden", "sim.json fehlt. Lokal: make sim, dann im Ordner build einen Webserver starten. Neuer Versuch in 10 s.", 0);
+    setProgress("No results found", "sim.json is missing. Locally: make sim, then start a web server in the build folder. Trying again in 10 s.", 0);
     setTimeout(load, 10000);
   }
 }
@@ -298,14 +298,14 @@ async function load() {
 function app(DATA, ST) {
 
 const METHODS = [
-  { id: "seq",  name: "Ein Gerät nacheinander", short: "Nacheinander", note: "Ein Gerät wird von Ecke zu Ecke getragen: jede Ecke ein Viertel der Messdauer, dazwischen 60 s Weg. Typisches Vorgehen mit einem Handgerät." },
-  { id: "snap", name: "4 Sensoren, ein Moment", short: "Ein Moment", note: "Alle vier Sensoren gleichzeitig, aber nur die Position im letzten Augenblick. Gemeinsame Fehler fallen heraus, das Rauschen jedes Standorts bleibt voll drin." },
-  { id: "sync", name: "4 Sensoren, gemittelt", short: "Gemittelt", note: "Alle vier Sensoren gleichzeitig, jede Position über die ganze Messdauer gemittelt. Gemeinsame Fehler fallen heraus, das Rauschen mittelt sich mit der Zeit weg." }
+  { id: "seq",  name: "One device in turn", short: "In turn", note: "One device is carried from corner to corner: each corner gets a quarter of the measuring time, with 60 s of walking in between. The typical approach with a handheld device." },
+  { id: "snap", name: "4 sensors, one moment", short: "One moment", note: "All four sensors at the same time, but only the position at the last moment. Common errors drop out, the noise at each spot stays in full." },
+  { id: "sync", name: "4 sensors, averaged", short: "Averaged", note: "All four sensors at the same time, each position averaged over the whole measuring time. Common errors drop out, the noise averages out over time." }
 ];
 const COLOR = { seq: "var(--m-seq)", snap: "var(--m-snap)", sync: "var(--m-sync)" };
 const state = { ti: 0, method: "sync", ex: 0, cloud: "abs" };
 const T = DATA.T, truth = DATA.truth;
-const de = (v, d = 1) => v.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt = (v, d = 1) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 const NS = "http://www.w3.org/2000/svg";
 
 function el(tag, attrs = {}, parent) {
@@ -316,14 +316,14 @@ function el(tag, attrs = {}, parent) {
 }
 function fmtDur(s) {
   if (s < 60) return s + " s";
-  if (s < 3600) return de(s / 60, s < 600 ? 1 : 0) + " min";
-  return de(s / 3600, s < 36000 ? 1 : 0) + " h";
+  if (s < 3600) return fmt(s / 60, s < 600 ? 1 : 0) + " min";
+  return fmt(s / 3600, s < 36000 ? 1 : 0) + " h";
 }
-const COMPASS = ["N","NNO","NO","ONO","O","OSO","SO","SSO","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+const COMPASS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
 const compass = a => COMPASS[Math.round(((a % 360) + 360) % 360 / 22.5) % 16];
 const angDiff = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
 
-/* ---------- Kopf-Tabelle ---------- */
+/* ---------- Header table ---------- */
 function buildSummary() {
   const last = T.length - 1, body = document.getElementById("sumBody");
   METHODS.forEach(m => {
@@ -331,16 +331,16 @@ function buildSummary() {
     const tr = document.createElement("tr");
     if (m.id === "sync") tr.className = "best";
     tr.innerHTML = `<td><i class="swatch" style="background:${COLOR[m.id]}"></i>${m.name}</td>
-      <td class="num">± ${de(s.area50[last])} m²</td><td class="num">± ${de(s.area90[last])} m²</td>
-      <td class="num">± ${de(s.slope50[last], 2)} %-P.</td><td class="num">± ${de(s.slope90[last], 2)} %-P.</td>
-      <td class="num">± ${de(s.aspect50[last], 0)}°</td>`;
+      <td class="num">± ${fmt(s.area50[last])} m²</td><td class="num">± ${fmt(s.area90[last])} m²</td>
+      <td class="num">± ${fmt(s.slope50[last], 2)} pp</td><td class="num">± ${fmt(s.slope90[last], 2)} pp</td>
+      <td class="num">± ${fmt(s.aspect50[last], 0)}°</td>`;
     body.appendChild(tr);
   });
   document.getElementById("sumCaption").textContent =
-    `Betrag der Abweichung vom wahren Wert (${de(truth.res.area, 0)} m², ${de(truth.res.slope_pct, 0)} % Gefälle nach ${compass(truth.res.aspect)}) über ${DATA.runs} unabhängige simulierte Tage. „90 %“: 9 von 10 Läufen sind mindestens so gut.`;
+    `Magnitude of the deviation from the true value (${fmt(truth.res.area, 0)} m², ${fmt(truth.res.slope_pct, 0)} % slope towards ${compass(truth.res.aspect)}) over ${DATA.runs} independent simulated days. "90 %": 9 out of 10 runs are at least this good. pp = percentage points.`;
 }
 
-/* ---------- Steuerung ---------- */
+/* ---------- Controls ---------- */
 function seg(containerId, items, key) {
   const c = document.getElementById(containerId);
   items.forEach(it => {
@@ -355,7 +355,7 @@ function seg(containerId, items, key) {
 }
 let mBtns, exBtns, clBtns;
 
-/* ---------- Lageplan ---------- */
+/* ---------- Site plan ---------- */
 const plan = document.getElementById("plan");
 const PW = 640, PH = 560, PAD = 34;
 const tc = truth.corners;
@@ -369,14 +369,14 @@ function drawPlanStatic() {
   const g = el("g", {}, plan);
   for (let e = Math.ceil(bb.e0 / 5) * 5; e <= bb.e1; e += 5) el("line", { x1: X(e), x2: X(e), y1: Y(bb.n0), y2: Y(bb.n1), stroke: "var(--grid)", "stroke-width": 1 }, g);
   for (let n = Math.ceil(bb.n0 / 5) * 5; n <= bb.n1; n += 5) el("line", { x1: X(bb.e0), x2: X(bb.e1), y1: Y(n), y2: Y(n), stroke: "var(--grid)", "stroke-width": 1 }, g);
-  /* wahre Grenze */
+  /* true boundary */
   el("polygon", { points: tc.map(c => X(c[0]) + "," + Y(c[1])).join(" "), fill: "var(--plot-fill)", stroke: "var(--truth)", "stroke-width": 1.5, "stroke-dasharray": "6 4" }, g);
-  /* Massstab 10 m */
+  /* scale bar 10 m */
   const sx = X(bb.e0) + 6, sy = Y(bb.n0) - 12;
   el("line", { x1: sx, x2: sx + 10 * sc, y1: sy, y2: sy, stroke: "var(--ink-2)", "stroke-width": 2 }, g);
   [0, 5, 10].forEach(m => el("line", { x1: sx + m * sc, x2: sx + m * sc, y1: sy - 4, y2: sy + (m === 5 ? 0 : 4), stroke: "var(--ink-2)", "stroke-width": 1.5 }, g));
   const t = el("text", { x: sx + 5 * sc, y: sy - 8, "text-anchor": "middle", "font-size": 12 }, g); t.textContent = "10 m";
-  /* Nordpfeil */
+  /* north arrow */
   const nx = X(bb.e1) - 18, ny = Y(bb.n1) + 14;
   el("path", { d: `M${nx},${ny} l-7,22 l7,-6 l7,6 z`, fill: "var(--ink-2)" }, g);
   const nt = el("text", { x: nx, y: ny + 38, "text-anchor": "middle", "font-size": 12 }, g); nt.textContent = "N";
@@ -405,7 +405,7 @@ function drawPlan(ex, est) {
   }
   const col = COLOR[state.method];
   el("polygon", { class: "est-poly", points: est.g.map(c => X(c[0]) + "," + Y(c[1])).join(" "), fill: "none", stroke: col, "stroke-width": 2.5, "stroke-linejoin": "round" }, dyn);
-  /* Gefaellerichtung: wahr (gestrichelt) und gemessen */
+  /* downhill direction: true (dashed) and measured */
   const ce = tc.reduce((s, c) => s + c[0], 0) / 4, cn = tc.reduce((s, c) => s + c[1], 0) / 4;
   arrow(dyn, ce, cn, truth.res.aspect, 7, "var(--truth)", "4 3");
   arrow(dyn, ce, cn, est.r.aspect, 7, col);
@@ -419,28 +419,28 @@ function drawPlan(ex, est) {
     t.textContent = names[k];
   });
   document.getElementById("planInfo").textContent =
-    `${nPts} Punkte je Sensor · ${state.cloud === "abs" ? "absolute Positionen" : "gleiche Epoche, relativ zu A"}`;
+    `${nPts} points per sensor · ${state.cloud === "abs" ? "absolute positions" : "same epoch, relative to A"}`;
 }
 
-/* ---------- Ergebnistafel ---------- */
+/* ---------- Results panel ---------- */
 function rate(err, good, warn) { return err <= good ? "good" : err <= warn ? "warn" : "bad"; }
 function drawKV(est) {
   const r = est.r, t = truth.res;
   const ea = r.area - t.area, es = r.slope_pct - t.slope_pct, ed = angDiff(r.aspect, t.aspect);
   const pa = Math.abs(ea) / t.area * 100;
-  const sign = v => (v >= 0 ? "+" : "−") + de(Math.abs(v), Math.abs(v) < 10 ? 1 : 0);
+  const sign = v => (v >= 0 ? "+" : "−") + fmt(Math.abs(v), Math.abs(v) < 10 ? 1 : 0);
   document.getElementById("kv").innerHTML = `
-    <div><span class="k">Fläche (horizontal)</span><span class="v">${de(r.area, 0)} m²</span>
-      <span class="t">wahr ${de(t.area, 0)} m²</span><span class="dev ${rate(pa, 2, 5)}">${sign(ea)} m² · ${de(pa, 1)} %</span></div>
-    <div><span class="k">Steigung</span><span class="v">${de(r.slope_pct, 1)} %</span>
-      <span class="t">${de(r.slope_deg, 1)}° · wahr ${de(t.slope_pct, 1)} %</span><span class="dev ${rate(Math.abs(es), 1, 2.5)}">${es >= 0 ? "+" : "−"}${de(Math.abs(es), 2)} %-Punkte</span></div>
-    <div><span class="k">Gefälle nach</span><span class="v">${compass(r.aspect)} · ${de(r.aspect, 0)}°</span>
-      <span class="t">wahr ${compass(t.aspect)} · ${de(t.aspect, 0)}°</span><span class="dev ${rate(ed, 10, 25)}">${de(ed, 0)}° daneben</span></div>
-    <div><span class="k">Oberfläche (geneigt)</span><span class="v">${de(r.surface, 0)} m²</span>
-      <span class="t">wahr ${de(t.surface, 0)} m²</span><span class="dev ${rate(Math.abs(r.surface - t.surface) / t.surface * 100, 2, 5)}">${sign(r.surface - t.surface)} m²</span></div>`;
+    <div><span class="k">Area (horizontal)</span><span class="v">${fmt(r.area, 0)} m²</span>
+      <span class="t">true ${fmt(t.area, 0)} m²</span><span class="dev ${rate(pa, 2, 5)}">${sign(ea)} m² · ${fmt(pa, 1)} %</span></div>
+    <div><span class="k">Slope</span><span class="v">${fmt(r.slope_pct, 1)} %</span>
+      <span class="t">${fmt(r.slope_deg, 1)}° · true ${fmt(t.slope_pct, 1)} %</span><span class="dev ${rate(Math.abs(es), 1, 2.5)}">${es >= 0 ? "+" : "−"}${fmt(Math.abs(es), 2)} pp</span></div>
+    <div><span class="k">Slope towards</span><span class="v">${compass(r.aspect)} · ${fmt(r.aspect, 0)}°</span>
+      <span class="t">true ${compass(t.aspect)} · ${fmt(t.aspect, 0)}°</span><span class="dev ${rate(ed, 10, 25)}">${fmt(ed, 0)}° off</span></div>
+    <div><span class="k">Surface (sloped)</span><span class="v">${fmt(r.surface, 0)} m²</span>
+      <span class="t">true ${fmt(t.surface, 0)} m²</span><span class="dev ${rate(Math.abs(r.surface - t.surface) / t.surface * 100, 2, 5)}">${sign(r.surface - t.surface)} m²</span></div>`;
 }
 
-/* ---------- Hoehen ---------- */
+/* ---------- Heights ---------- */
 const hs = document.getElementById("heights");
 function drawHeights(est) {
   hs.innerHTML = "";
@@ -467,7 +467,7 @@ function drawHeights(est) {
   document.getElementById("hLegend").style.borderColor = col;
 }
 
-/* ---------- Konvergenzkurven ---------- */
+/* ---------- Convergence curves ---------- */
 function drawChart(svg, k50, k90, unit, decimals) {
   svg.innerHTML = "";
   const W = 520, H = 300, L = 52, R = 16, Tp = 14, B = 34;
@@ -481,7 +481,7 @@ function drawChart(svg, k50, k90, unit, decimals) {
   const y = v => Tp + (1 - v / ymax) * (H - Tp - B);
   for (let v = 0; v <= ymax + 1e-9; v += step) {
     el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: "var(--grid)" }, svg);
-    const t = el("text", { x: L - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11 }, svg); t.textContent = de(v, step < 1 ? 1 : 0);
+    const t = el("text", { x: L - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11 }, svg); t.textContent = fmt(v, step < 1 ? 1 : 0);
   }
   [[4, "4 s"], [60, "1 min"], [600, "10 min"], [3600, "1 h"], [21600, "6 h"], [86400, "24 h"]].forEach(([tv, lab]) => {
     el("line", { x1: x(tv), x2: x(tv), y1: H - B, y2: H - B + 5, stroke: "var(--ink-3)" }, svg);
@@ -496,22 +496,22 @@ function drawChart(svg, k50, k90, unit, decimals) {
     el("polygon", { points: top.concat(bot).join(" "), fill: COLOR[id], opacity: on ? .16 : .06 }, svg);
     el("polyline", { points: T.map((t, i) => `${x(t).toFixed(1)},${y(s[k50][i]).toFixed(1)}`).join(" "), fill: "none", stroke: COLOR[id], "stroke-width": on ? 2.6 : 1.4, opacity: on ? 1 : .55 }, svg);
   });
-  /* Markierung aktuelle Messdauer */
+  /* marker for the current measuring time */
   const cx = x(T[state.ti]), s = DATA.stats[state.method];
   el("line", { x1: cx, x2: cx, y1: Tp, y2: H - B, stroke: "var(--ink-2)", "stroke-dasharray": "3 3" }, svg);
   el("circle", { cx, cy: y(s[k50][state.ti]), r: 4.5, fill: COLOR[state.method], stroke: "var(--panel)", "stroke-width": 2 }, svg);
-  const lab = "± " + de(s[k50][state.ti], decimals) + " " + unit;
+  const lab = "± " + fmt(s[k50][state.ti], decimals) + " " + unit;
   const tx = cx > W - 140 ? cx - 8 : cx + 8;
   const t = el("text", { x: tx, y: Math.max(Tp + 12, y(s[k50][state.ti]) - 9), "text-anchor": cx > W - 140 ? "end" : "start", "font-size": 12, "font-weight": 500, fill: "var(--ink)" }, svg);
   t.textContent = lab;
 }
 
-/* ---------- Gesamt ---------- */
+/* ---------- Everything ---------- */
 function render() {
   const ex = DATA.examples[state.ex], est = ex[state.method][state.ti];
   const t = T[state.ti];
   document.getElementById("durOut").textContent = fmtDur(t);
-  document.getElementById("durSub").textContent = state.method === "seq" ? `je Ecke ${fmtDur(Math.max(1, Math.floor(t / 4)))}` : "alle Ecken gleichzeitig";
+  document.getElementById("durSub").textContent = state.method === "seq" ? `${fmtDur(Math.max(1, Math.floor(t / 4)))} per corner` : "all corners at once";
   document.getElementById("dur").setAttribute("aria-valuetext", fmtDur(t));
   mBtns.forEach(b => b.btn.setAttribute("aria-pressed", b.value === state.method));
   exBtns.forEach(b => b.btn.setAttribute("aria-pressed", b.value === state.ex));
@@ -521,14 +521,14 @@ function render() {
   drawKV(est);
   drawHeights(est);
   drawChart(document.getElementById("cArea"), "area50", "area90", "m²", 1);
-  drawChart(document.getElementById("cSlope"), "slope50", "slope90", "%-P.", 2);
+  drawChart(document.getElementById("cSlope"), "slope50", "slope90", "pp", 2);
 }
 
 function init() {
   buildSummary();
   mBtns = seg("methods", METHODS.map(m => ({ value: m.id, label: m.short, color: COLOR[m.id] })), "method");
-  exBtns = seg("examples", DATA.examples.map((e, i) => ({ value: i, label: `${e.label} (Lauf ${e.run})` })), "ex");
-  clBtns = seg("clouds", [{ value: "abs", label: "Absolut" }, { value: "rel", label: "Gleiche Epoche" }], "cloud");
+  exBtns = seg("examples", DATA.examples.map((e, i) => ({ value: i, label: `${e.label} (run ${e.run})` })), "ex");
+  clBtns = seg("clouds", [{ value: "abs", label: "Absolute" }, { value: "rel", label: "Same epoch" }], "cloud");
   const slider = document.getElementById("dur");
   slider.max = T.length - 1;
   state.ti = T.reduce((b, v, i) => Math.abs(Math.log(v / 3600)) < Math.abs(Math.log(T[b] / 3600)) ? i : b, 0);
@@ -537,22 +537,22 @@ function init() {
   drawPlanStatic();
   plan.appendChild(dyn);
   document.getElementById("planLegend").innerHTML =
-    `<span><i class="lg-line lg-dash" style="border-color:var(--truth)"></i>wahre Grenze</span>
-     <span><i class="lg-line" id="pLeg"></i>gemessene Grenze</span>
-     <span><i class="lg-dot"></i>Messpunkte (1 je Minute)</span>
-     <span>Pfeil: Gefälle nach</span>`;
+    `<span><i class="lg-line lg-dash" style="border-color:var(--truth)"></i>true boundary</span>
+     <span><i class="lg-line" id="pLeg"></i>measured boundary</span>
+     <span><i class="lg-dot"></i>measured points (1 per minute)</span>
+     <span>arrow: downhill direction</span>`;
   const f = DATA.filter.reduce((a, s) => ({ e: a.e + s.events, p: a.p + s.passed, j: a.j + s.jump_epochs }), { e: 0, p: 0, j: 0 });
-  document.getElementById("jumpStat").textContent = `${f.e.toLocaleString("de-DE")} Ausreißer mit ${f.j.toLocaleString("de-DE")} Messungen, ${f.p} davon durchgerutscht`;
-  document.getElementById("truthArea").textContent = de(truth.res.area, 0);
+  document.getElementById("jumpStat").textContent = `${f.e.toLocaleString("en-US")} outliers with ${f.j.toLocaleString("en-US")} measurements, ${f.p} of them slipped through`;
+  document.getElementById("truthArea").textContent = fmt(truth.res.area, 0);
   document.getElementById("startTime").textContent = DATA.start;
   const m = DATA.model;
   document.getElementById("modelTable").innerHTML = `
-    <tr><th>Anteil</th><th>horizontal</th><th>vertikal</th><th>Zeitkonstante</th></tr>
-    <tr><td>gemeinsam (Atmosphäre, Bahnen)</td><td class="num">${de(m.com_h)} m je Achse</td><td class="num">${de(m.com_v)} m</td><td class="num">${m.com_tau / 60} min</td></tr>
-    <tr><td>Mehrwege je Sensor A/B/C/D</td><td class="num">${m.mp_h.map(v => de(v)).join(" / ")} m</td><td class="num">doppelt</td><td class="num">${m.mp_tau / 60} min</td></tr>
-    <tr><td>bleibender Rest je Sensor</td><td class="num">${m.bias_h.map(v => de(v, 2)).join(" / ")} m</td><td class="num">${m.bias_v.map(v => de(v, 2)).join(" / ")} m</td><td class="num">konstant</td></tr>
-    <tr><td>Rauschen</td><td class="num">${de(m.wn_h, 2)} m</td><td class="num">${de(m.wn_v, 2)} m</td><td class="num">1 s</td></tr>
-    <tr><td>Ausreißer 15–80 m, 1–4 s</td><td class="num" colspan="3">ca. ${m.jumps_per_day} pro Sensor und Tag</td></tr>`;
+    <tr><th>Component</th><th>horizontal</th><th>vertical</th><th>time constant</th></tr>
+    <tr><td>common (atmosphere, orbits)</td><td class="num">${fmt(m.com_h)} m per axis</td><td class="num">${fmt(m.com_v)} m</td><td class="num">${m.com_tau / 60} min</td></tr>
+    <tr><td>multipath per sensor A/B/C/D</td><td class="num">${m.mp_h.map(v => fmt(v)).join(" / ")} m</td><td class="num">double</td><td class="num">${m.mp_tau / 60} min</td></tr>
+    <tr><td>remaining residual per sensor</td><td class="num">${m.bias_h.map(v => fmt(v, 2)).join(" / ")} m</td><td class="num">${m.bias_v.map(v => fmt(v, 2)).join(" / ")} m</td><td class="num">constant</td></tr>
+    <tr><td>noise</td><td class="num">${fmt(m.wn_h, 2)} m</td><td class="num">${fmt(m.wn_v, 2)} m</td><td class="num">1 s</td></tr>
+    <tr><td>outliers 15–80 m, 1–4 s</td><td class="num" colspan="3">approx. ${m.jumps_per_day} per sensor and day</td></tr>`;
   render();
   const pl = document.getElementById("pLeg");
   const upd = () => { pl.style.borderColor = COLOR[state.method]; };
@@ -561,8 +561,8 @@ function init() {
 }
   init();
   const eb = document.getElementById("eyebrow");
-  eb.textContent = `neo_gps · Simulation · 4 × NEO-M8N · ${DATA.runs} Läufe à 24 h` +
-    (ST && ST.finished ? ` · auf dem Pi berechnet ${ST.finished} · Library ${(ST.commit || "").slice(0, 7)}` : "");
+  eb.textContent = `neo_gps · simulation · 4 × NEO-M8N · ${DATA.runs} runs of 24 h` +
+    (ST && ST.finished ? ` · computed ${ST.finished} · library ${(ST.commit || "").slice(0, 7)}` : "");
 }
 load();
 </script>

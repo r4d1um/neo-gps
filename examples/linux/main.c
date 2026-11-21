@@ -1,9 +1,9 @@
 /*
- * Linux / Raspberry Pi / USB-Serial-Adapter
+ * Linux / Raspberry Pi / USB serial adapter
  *
  *   make linux
- *   ./build/neo_gps_linux /dev/ttyUSB0 9600          (NMEA, Werkszustand)
- *   ./build/neo_gps_linux /dev/ttyUSB0 9600 ubx      (auf 115200 Baud + UBX umstellen)
+ *   ./build/neo_gps_linux /dev/ttyUSB0 9600          (NMEA, factory default)
+ *   ./build/neo_gps_linux /dev/ttyUSB0 9600 ubx      (switch to 115200 baud + UBX)
  */
 #include "neo_gps.h"
 #include "neo_gps_util.h"
@@ -59,7 +59,7 @@ static void uart_set_baud(long baud)
 
 static neo_gps_t gps;
 
-/* Wartet (max. ~2 s) auf ein bestimmtes Event */
+/* Waits (max. ~2 s) for a specific event */
 static int wait_for(neo_event_t want)
 {
     uint8_t buf[256];
@@ -87,8 +87,8 @@ int main(int argc, char **argv)
 
     neo_gps_detect_model(&gps);
     if (wait_for(NEO_EV_UBX_MON_VER)) {
-        static const char *names[] = { "unbekannt", "NEO-6M", "NEO-7M", "NEO-M8N" };
-        printf("Modul erkannt: %s\n", names[neo_gps_model(&gps)]);
+        static const char *names[] = { "unknown", "NEO-6M", "NEO-7M", "NEO-M8N" };
+        printf("Module detected: %s\n", names[neo_gps_model(&gps)]);
     }
 
     if (ubx) {
@@ -97,7 +97,7 @@ int main(int argc, char **argv)
         uart_set_baud(115200);
         neo_gps_cfg_output(&gps, NEO_OUT_UBX);
         neo_gps_cfg_rate(&gps, neo_gps_model(&gps) == NEO_MODEL_NEO6 ? 200 : 100);
-        printf("Rate: %s\n", wait_for(NEO_EV_UBX_ACK) && neo_gps_ack_status(&gps) == NEO_ACK_OK ? "OK" : "kein ACK");
+        printf("Rate: %s\n", wait_for(NEO_EV_UBX_ACK) && neo_gps_ack_status(&gps) == NEO_ACK_OK ? "OK" : "no ACK");
     }
 
     for (;;) {
@@ -111,8 +111,8 @@ int main(int argc, char **argv)
             static const neo_tz_t berlin = NEO_TZ_BERLIN;
             neo_local_time_t lt;
             if (neo_gps_local_time(d, &berlin, &lt))
-                printf("Berlin %02u.%02u.%04u %02u:%02u:%02u %s | ", lt.t.day, lt.t.month, lt.t.year,
-                       lt.t.hour, lt.t.minute, lt.t.second, lt.is_dst ? "MESZ" : "MEZ");
+                printf("Berlin %04u-%02u-%02u %02u:%02u:%02u %s | ", lt.t.year, lt.t.month, lt.t.day,
+                       lt.t.hour, lt.t.minute, lt.t.second, lt.is_dst ? "CEST" : "CET");
             printf("%04u-%02u-%02u %02u:%02u:%02u.%03u  fix=%u sv=%2u  %.7f %.7f  %.1f m  %.1f km/h  %.1f deg  hdop=%.2f  (unix %u)\n",
                    d->time.year, d->time.month, d->time.day, d->time.hour, d->time.minute,
                    d->time.second, d->time.ms, d->fix, d->num_sv,
@@ -120,11 +120,11 @@ int main(int argc, char **argv)
                    neo_gps_speed_kmh(&gps), neo_gps_course_deg(&gps), d->hdop / 100.0,
                    neo_gps_unix_time(d));
         } else if (upd & NEO_UPD_REJECTED) {
-            static const char *why[] = { "", "Fix", "Satelliten", "HDOP", "Genauigkeit", "Sprung" };
-            printf("verworfen (%s): roh %.7f %.7f\n", why[gps.data.reject_reason],
+            static const char *why[] = { "", "fix", "satellites", "HDOP", "accuracy", "jump" };
+            printf("rejected (%s): raw %.7f %.7f\n", why[gps.data.reject_reason],
                    gps.data.raw_lat * 1e-7, gps.data.raw_lon * 1e-7);
         } else if ((upd & NEO_UPD_FIX) && !neo_gps_has_fix(&gps)) {
-            printf("warte auf Fix ... (%u Satelliten sichtbar)\n", gps.data.sats_in_view);
+            printf("waiting for fix ... (%u satellites in view)\n", gps.data.sats_in_view);
         }
     }
 }

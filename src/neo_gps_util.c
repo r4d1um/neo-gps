@@ -3,7 +3,7 @@
 #include <math.h>
 
 #define DEG2RAD_E7 (3.14159265358979323846 / 180.0 * 1e-7)
-#define EARTH_R    6371008.8   /* mittlerer Erdradius in m */
+#define EARTH_R    6371008.8   /* mean Earth radius in m */
 
 float neo_gps_distance_m(int32_t lat1, int32_t lon1, int32_t lat2, int32_t lon2)
 {

@@ -5,7 +5,7 @@
 #include "neo_gps.h"
 #include <string.h>
 
-/* Parser-Zustaende */
+/* Parser states */
 enum {
     ST_IDLE = 0,
     ST_NMEA, ST_NMEA_CK1, ST_NMEA_CK2,
@@ -28,8 +28,8 @@ uint16_t neo_gps_updates(neo_gps_t *gps)
 }
 
 /* ========================================================================= */
-/* Positionsuebernahme (Filter haengt sich per Funktionszeiger ein, damit er  */
-/* nur gelinkt wird, wenn neo_gps_filter_* auch benutzt wird)                */
+/* Taking over the position (the filter hooks in via a function pointer, so  */
+/* it is only linked when neo_gps_filter_* is actually used)                 */
 /* ========================================================================= */
 #define NO_TIME NEO_GPS_TIME_UNKNOWN
 
@@ -70,9 +70,9 @@ enum { T_NONE = 0, T_RMC, T_GGA, T_GSA, T_VTG, T_GSV };
 #define H_NAVMODE 0x2000u
 #define H_INVIEW  0x4000u
 
-#define NMEA_MAX_LEN 100u   /* Standard: 82, etwas Reserve fuer NMEA 4.1 */
+#define NMEA_MAX_LEN 100u   /* standard: 82, some reserve for NMEA 4.1 */
 
-/* "123.4567" -> Ganzzahl mit genau 'dec' Nachkommastellen (abschneiden/auffuellen). */
+/* "123.4567" -> integer with exactly 'dec' decimal places (truncate/pad). */
 static uint8_t parse_ufixed(const char *s, uint8_t n, uint8_t dec, uint32_t *out)
 {
     uint32_t v = 0;
@@ -108,7 +108,7 @@ static uint8_t parse_sfixed(const char *s, uint8_t n, uint8_t dec, int32_t *out)
     return 1;
 }
 
-/* "dddmm.mmmmm" -> 1e-7 Grad, rein ganzzahlig: Grad*1e7 + Minuten_e5 * 5/3 */
+/* "dddmm.mmmmm" -> 1e-7 degrees, integer-only: deg*1e7 + minutes_e5 * 5/3 */
 static uint8_t parse_coord(const char *s, uint8_t n, int32_t *out)
 {
     uint32_t v, deg, min_e5;
@@ -128,7 +128,7 @@ static uint8_t hexval(uint8_t c)
     return 0xFF;
 }
 
-/* Feld 0 (Adresse) auswerten. 0 = Satz uninteressant -> verwerfen */
+/* Evaluate field 0 (address). 0 = sentence not of interest -> discard */
 static uint8_t nmea_address(neo_gps_t *g, const char *b, uint8_t n)
 {
     uint8_t t;
@@ -141,7 +141,7 @@ static uint8_t nmea_address(neo_gps_t *g, const char *b, uint8_t n)
     else return 0;
 
     g->n_type = t;
-    /* Talker fuer GSV: GP=0, GL=1, GA=2, GB/BD=3 */
+    /* talker for GSV: GP=0, GL=1, GA=2, GB/BD=3 */
     if (b[0] == 'G' && b[1] == 'P')      g->n_talker = 0;
     else if (b[0] == 'G' && b[1] == 'L') g->n_talker = 1;
     else if (b[0] == 'G' && b[1] == 'A') g->n_talker = 2;
@@ -150,7 +150,7 @@ static uint8_t nmea_address(neo_gps_t *g, const char *b, uint8_t n)
     return 1;
 }
 
-/* Ein komplettes Feld verarbeiten. Leere Felder werden einfach ignoriert. */
+/* Process one complete field. Empty fields are simply ignored. */
 static uint8_t nmea_field(neo_gps_t *g)
 {
     const char *b = g->n_buf;
@@ -243,11 +243,11 @@ static void set_date(neo_gps_data_t *d, uint32_t v)
     d->updated   |= NEO_UPD_DATE;
 }
 
-/* Knoten*1e3 -> mm/s  (1 kn = 1852/3600 m/s = 463/900 m/s) */
+/* knots*1e3 -> mm/s  (1 kn = 1852/3600 m/s = 463/900 m/s) */
 static uint32_t knots_to_mms(uint32_t k_e3) { return (uint32_t)((k_e3 * 463UL + 450UL) / 900UL); }
 
-/* Pruefsumme stimmte: Werte uebernehmen */
-/* hhmmss*1000+ms -> ms seit Mitternacht (fuer den Filter) */
+/* Checksum was correct: take over the values */
+/* hhmmss*1000+ms -> ms since midnight (for the filter) */
 static uint32_t nmea_ms_of_day(const neo_gps_t *g)
 {
     uint32_t t = g->n.time_raw;
@@ -356,7 +356,7 @@ static void nmea_start(neo_gps_t *g)
 #define CLS_CFG 0x06u
 #define CLS_MON 0x0Au
 
-/* Little-Endian lesen, alignment-sicher (auch auf Cortex-M0 / AVR) */
+/* Read little-endian, alignment-safe (also on Cortex-M0 / AVR) */
 static uint16_t rd_u16(const uint8_t *p) { return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8)); }
 static uint32_t rd_u32(const uint8_t *p)
 {
@@ -366,7 +366,7 @@ static int32_t rd_i32(const uint8_t *p) { return (int32_t)rd_u32(p); }
 
 static void ubx_set_datetime(neo_gps_data_t *d, const uint8_t *p, int32_t nano, uint8_t date_ok, uint8_t time_ok)
 {
-    /* p zeigt auf year(U2) month day hour min sec */
+    /* p points to year(U2) month day hour min sec */
     if (date_ok) {
         d->time.year  = rd_u16(p);
         d->time.month = p[2];
@@ -375,7 +375,7 @@ static void ubx_set_datetime(neo_gps_data_t *d, const uint8_t *p, int32_t nano, 
         d->updated   |= NEO_UPD_DATE;
     }
     if (time_ok) {
-        int32_t ms = (int32_t)((nano + 500000L) / 1000000L);   /* auf ms runden */
+        int32_t ms = (int32_t)((nano + 500000L) / 1000000L);   /* round to ms */
         if (ms < 0) ms = 0;
         if (ms > 999) ms = 999;
         d->time.hour   = p[4];
@@ -406,7 +406,7 @@ static neo_event_t ubx_dispatch(neo_gps_t *g)
 
     if (cls == CLS_NAV) {
         switch (id) {
-        case 0x07: /* NAV-PVT: 84 Byte (u-blox 7) / 92 Byte (M8) */
+        case 0x07: /* NAV-PVT: 84 bytes (u-blox 7) / 92 bytes (M8) */
             if (len >= 84) {
                 uint8_t ok = (p[21] & 0x01u) != 0;
                 d->itow = rd_u32(p);
@@ -450,7 +450,7 @@ static neo_event_t ubx_dispatch(neo_gps_t *g)
             }
             break;
 
-        case 0x12: /* NAV-VELNED (NEO-6), Einheiten cm/s */
+        case 0x12: /* NAV-VELNED (NEO-6), units cm/s */
             if (len >= 36) {
                 d->itow   = rd_u32(p);
                 d->vel_n  = rd_i32(p + 4) * 10;
@@ -502,7 +502,7 @@ static neo_event_t ubx_dispatch(neo_gps_t *g)
             g->ack_state = (id == 0x01) ? NEO_ACK_OK : NEO_ACK_NAK;
         return (id == 0x01) ? NEO_EV_UBX_ACK : NEO_EV_UBX_NAK;
     } else if (cls == CLS_MON && id == 0x04 && len >= 40) {
-        /* MON-VER: hwVersion (10 Zeichen) ab Offset 30, z.B. "00040007" */
+        /* MON-VER: hwVersion (10 characters) at offset 30, e.g. "00040007" */
         const uint8_t *hw = p + 30;
         if (hw[0] == '0' && hw[1] == '0' && hw[2] == '0') {
             if (hw[3] == '4')      g->model = NEO_MODEL_NEO6;
@@ -517,7 +517,7 @@ static neo_event_t ubx_dispatch(neo_gps_t *g)
 #endif /* NEO_GPS_ENABLE_UBX */
 
 /* ========================================================================= */
-/* Byte-Eingang                                                              */
+/* Byte input                                                                */
 /* ========================================================================= */
 
 static neo_event_t start_frame(neo_gps_t *g, uint8_t c)
@@ -550,16 +550,16 @@ neo_event_t neo_gps_feed(neo_gps_t *g, uint8_t c)
             return NEO_EV_NONE;
         }
         if (c < 0x20 || c > 0x7E || c == '$' || ++g->n_len > NMEA_MAX_LEN)
-            return start_frame(g, c);           /* kaputter Satz -> neu synchronisieren */
+            return start_frame(g, c);           /* broken sentence -> resynchronise */
         g->n_chk ^= c;
         if (c == ',') {
             g->n_buf[g->n_flen <= NEO_GPS_NMEA_FIELD_MAX ? g->n_flen : NEO_GPS_NMEA_FIELD_MAX] = '\0';
-            if (!nmea_field(g)) { g->state = ST_IDLE; return NEO_EV_NONE; }  /* uninteressant */
+            if (!nmea_field(g)) { g->state = ST_IDLE; return NEO_EV_NONE; }  /* not of interest */
             g->n_field++;
             g->n_flen = 0;
         } else {
             if (g->n_flen < NEO_GPS_NMEA_FIELD_MAX) g->n_buf[g->n_flen] = (char)c;
-            if (g->n_flen <= NEO_GPS_NMEA_FIELD_MAX) g->n_flen++;   /* > MAX = Ueberlauf */
+            if (g->n_flen <= NEO_GPS_NMEA_FIELD_MAX) g->n_flen++;   /* > MAX = overflow */
         }
         return NEO_EV_NONE;
 
@@ -640,7 +640,7 @@ uint16_t neo_gps_feed_buf(neo_gps_t *gps, const uint8_t *buf, uint16_t len)
 }
 
 /* ========================================================================= */
-/* UBX senden / konfigurieren                                                */
+/* UBX send / configure                                                      */
 /* ========================================================================= */
 #if NEO_GPS_ENABLE_UBX
 
@@ -665,7 +665,7 @@ void neo_gps_ubx_send(neo_gps_t *g, uint8_t cls, uint8_t id, const uint8_t *payl
 
     if (cls == CLS_CFG) { g->ack_cls = cls; g->ack_id = id; g->ack_state = NEO_ACK_PENDING; }
 
-    if (len <= TX_INLINE_MAX) {           /* ein einziger write()-Aufruf - DMA-freundlich */
+    if (len <= TX_INLINE_MAX) {           /* a single write() call - DMA-friendly */
         if (len) memcpy(&f[6], payload, len);
         f[6 + len] = a; f[7 + len] = b;
         g->write(g->user, f, (uint16_t)(len + 8u));
@@ -689,7 +689,7 @@ void neo_gps_cfg_port(neo_gps_t *g, uint32_t baud, uint8_t out_proto)
     p[0] = 1;                              /* UART1 */
     wr_u32(&p[4], 0x000008D0UL);           /* 8N1 */
     wr_u32(&p[8], baud);
-    wr_u16(&p[12], NEO_PROTO_UBX | NEO_PROTO_NMEA);   /* Eingang: immer beides */
+    wr_u16(&p[12], NEO_PROTO_UBX | NEO_PROTO_NMEA);   /* input: always both */
     wr_u16(&p[14], out_proto);
     neo_gps_ubx_send(g, CLS_CFG, 0x00, p, sizeof(p));
 }
@@ -698,21 +698,21 @@ void neo_gps_cfg_rate(neo_gps_t *g, uint16_t meas_ms)
 {
     uint8_t p[6];
     wr_u16(&p[0], meas_ms);
-    wr_u16(&p[2], 1);                      /* navRate: immer 1 */
-    wr_u16(&p[4], 1);                      /* timeRef: GPS-Zeit */
+    wr_u16(&p[2], 1);                      /* navRate: always 1 */
+    wr_u16(&p[4], 1);                      /* timeRef: GPS time */
     neo_gps_ubx_send(g, CLS_CFG, 0x08, p, sizeof(p));
 }
 
 void neo_gps_cfg_msg(neo_gps_t *g, uint8_t cls, uint8_t id, uint8_t rate)
 {
     uint8_t p[3];
-    p[0] = cls; p[1] = id; p[2] = rate;    /* Kurzform: gilt fuer den aktuellen Port */
+    p[0] = cls; p[1] = id; p[2] = rate;    /* short form: applies to the current port */
     neo_gps_ubx_send(g, CLS_CFG, 0x01, p, sizeof(p));
 }
 
 void neo_gps_cfg_output(neo_gps_t *g, neo_output_t out)
 {
-    /* NMEA-Standardsaetze: Klasse 0xF0 - GGA=0 GLL=1 GSA=2 GSV=3 RMC=4 VTG=5 */
+    /* NMEA standard sentences: class 0xF0 - GGA=0 GLL=1 GSA=2 GSV=3 RMC=4 VTG=5 */
     static const uint8_t nmea_ids[6] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
     static const uint8_t def_on[6]   = { 1, 1, 1, 1, 1, 1 };
     static const uint8_t min_on[6]   = { 1, 0, 1, 0, 1, 0 };
@@ -721,7 +721,7 @@ void neo_gps_cfg_output(neo_gps_t *g, neo_output_t out)
     uint8_t i, pvt = (out == NEO_OUT_UBX && g->model != NEO_MODEL_NEO6);
     uint8_t legacy = (out == NEO_OUT_UBX && g->model == NEO_MODEL_NEO6);
 
-    /* Erst UBX einschalten, dann NMEA aus - so gibt es nie eine Luecke */
+    /* First switch UBX on, then NMEA off - so there is never a gap */
     neo_gps_cfg_msg(g, CLS_NAV, 0x07, pvt);             /* NAV-PVT     */
     neo_gps_cfg_msg(g, CLS_NAV, 0x02, legacy);          /* NAV-POSLLH  */
     neo_gps_cfg_msg(g, CLS_NAV, 0x12, legacy);          /* NAV-VELNED  */
@@ -736,7 +736,7 @@ void neo_gps_cfg_dynmodel(neo_gps_t *g, neo_dyn_model_t model)
 {
     uint8_t p[36];
     memset(p, 0, sizeof(p));
-    wr_u16(&p[0], 0x0001);                 /* Maske: nur dynModel aendern */
+    wr_u16(&p[0], 0x0001);                 /* mask: change dynModel only */
     p[2] = (uint8_t)model;
     neo_gps_ubx_send(g, CLS_CFG, 0x24, p, sizeof(p));
 }
@@ -744,7 +744,7 @@ void neo_gps_cfg_dynmodel(neo_gps_t *g, neo_dyn_model_t model)
 void neo_gps_cfg_power_save(neo_gps_t *g, uint8_t enable)
 {
     uint8_t p[2];
-    p[0] = 8;                              /* reserved, laut Doku immer 8 */
+    p[0] = 8;                              /* reserved, always 8 according to the docs */
     p[1] = enable ? 1 : 0;
     neo_gps_ubx_send(g, CLS_CFG, 0x11, p, sizeof(p));
 }
@@ -767,10 +767,10 @@ void neo_gps_reset(neo_gps_t *g, neo_start_t type)
     uint8_t p[4];
     uint16_t bbr = (type == NEO_START_COLD) ? 0xFFFFu : (type == NEO_START_WARM) ? 0x0001u : 0x0000u;
     wr_u16(&p[0], bbr);
-    p[2] = 0x02;                           /* kontrollierter Software-Reset (nur GNSS) */
+    p[2] = 0x02;                           /* controlled software reset (GNSS only) */
     p[3] = 0;
     neo_gps_ubx_send(g, CLS_CFG, 0x04, p, sizeof(p));
-    g->ack_state = NEO_ACK_NONE;           /* CFG-RST wird nicht bestaetigt */
+    g->ack_state = NEO_ACK_NONE;           /* CFG-RST is not acknowledged */
 }
 
 #endif /* NEO_GPS_ENABLE_UBX */

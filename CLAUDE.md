@@ -1,32 +1,35 @@
-# Regeln für dieses Repo (öffentlich, MIT)
+# Rules for this repo (public, MIT)
 
-Erster Schritt in jeder Session: `tools/session-setup.sh` (installiert nur, was fehlt; Toolchains aus r4d1um/setup).
+First step in every session: `tools/session-setup.sh` (installs only what is missing; toolchains from r4d1um/setup).
 
-Nur die Library `neo_gps` (C99, u-blox NEO-6M/7M/M8N), sonst nichts.
+Only the `neo_gps` library (C99, u-blox NEO-6M/7M/M8N), nothing else.
 
-## Struktur
+## Map
 
 ```
-src/                    neo_gps (Parser, UBX), _filter (Sprungfilter), _time (Ortszeit), _util (Entfernung/Peilung)
-tests/                  test_neo_gps.c (Host-Tests, Bench mit NEO_BENCH=1), link_mcu.c (Firmware-Linktest)
+src/                    neo_gps (parser, UBX), _filter (jump filter), _time (local time), _util (distance/bearing)
+tests/                  test_neo_gps.c (host tests, bench with NEO_BENCH=1), link_mcu.c (firmware link test)
 examples/               linux, arduino, stm32_hal, simulation (make sim)
 Makefile                test, dist, dist-check, package, print-version
-CMakeLists.txt          CMake + ESP-IDF-Komponente
-library.json/.properties  PlatformIO / Arduino (Version muss zu src/neo_gps.h passen: make version-check)
-.github/workflows/      ci.yml (Tests, alle Ziele, Release v<VERSION>), privcheck.yml
-tools/session-setup.sh  Toolchains (nur öffentliche aus r4d1um/setup)
-tools/privcheck/        Go-Check auf private Inhalte (go.mod im Root gilt nur dafür)
+CMakeLists.txt          CMake + ESP-IDF component
+library.json/.properties  PlatformIO / Arduino (version must match src/neo_gps.h: make version-check)
+.github/workflows/      ci.yml (tests, all targets, release v<VERSION>), privcheck.yml
+tools/session-setup.sh  toolchains (public ones from r4d1um/setup only)
+tools/privcheck/        Go check for private content (the root go.mod is only for this)
 ```
 
-## Regeln
+## Rules
 
-- Version in `src/neo_gps.h`, `library.json`, `library.properties` und CHANGELOG gleich erhöhen; das Mergen auf main
-  macht Tag und Release `v<VERSION>` (Sessions können keine Tags pushen).
-- Schnittstellen nur erweitern, nie umbenannt (SemVer).
-- Nichts Privates: `go run ./tools/privcheck .` muss sauber sein; keine echten Orte, Hosts, IPs, Namen.
-- Neue Ziele: Toolchain zuerst nach r4d1um/setup, dann hier in `tools/session-setup.sh` und der README-Tabelle.
+- **English only**: code, comments, docs, CHANGELOG, workflows, test and example output, commit messages, PRs, issues.
+  No German anywhere in this repo.
+- Raise the version in `src/neo_gps.h`, `library.json`, `library.properties` and CHANGELOG together; merging to main
+  creates tag and release `v<VERSION>` (sessions can't push tags).
+- Interfaces are only extended, never renamed (SemVer).
+- Nothing private: `go run ./tools/privcheck .` must be clean; no real places, hosts, IPs or names.
+- New targets: toolchain first into r4d1um/setup, then here in `tools/session-setup.sh` and the README table.
 
-## Entscheidungen
+## Decisions
 
-- 2026-11-21: aus r4d1um/iot-lib-public (`c/neo_gps`) in dieses eigene Repo umgezogen, ohne Git-Historie; ab 1.2.1
-  Releases `v<version>` hier, die alten Releases `c/neo_gps/v*` bleiben in iot-lib-public.
+- 2026-11-21: moved from r4d1um/iot-lib-public (`c/neo_gps`) into this repo of its own, without git history; from 1.2.1
+  releases are `v<version>` here, the old `c/neo_gps/v*` releases stay in iot-lib-public.
+- 2026-11-21: English only (1.2.2 translated everything).

@@ -1,8 +1,8 @@
 #!/bin/sh
-# Installiert die Toolchains fuer dieses Repo aus r4d1um/setup (nur was fehlt).
-#   tools/session-setup.sh                 alle Toolchains unten
-#   tools/session-setup.sh avr-gcc         nur die genannten
-# Nur oeffentliche Toolchains: das CI-Token dieses public Repos kann setup-private nicht lesen.
+# Installs the toolchains for this repo from r4d1um/setup (only what is missing).
+#   tools/session-setup.sh                 all toolchains below
+#   tools/session-setup.sh avr-gcc         only the ones named
+# Public toolchains only: the CI token of this public repo can't read setup-private.
 set -eu
 R4SETUP_REF=v1.3.0
 [ "$#" -gt 0 ] || set -- avr-gcc arm-none-eabi aarch64-linux-gnu arm-linux-gnueabihf i686-linux-gnu
