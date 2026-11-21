@@ -13,8 +13,7 @@ examples/               linux, arduino, stm32_hal, simulation (make sim)
 Makefile                test, dist, dist-check, package, print-version
 CMakeLists.txt          CMake + ESP-IDF component
 library.json/.properties  PlatformIO / Arduino (version must match src/neo_gps.h: make version-check)
-.github/workflows/      ci.yml (tests, all targets, release v<VERSION>), privcheck.yml
-tools/privcheck/        Go check for private content (the root go.mod is only for this)
+.github/workflows/      ci.yml (tests, all targets, release v<VERSION>)
 ```
 
 ## Rules
@@ -24,7 +23,8 @@ tools/privcheck/        Go check for private content (the root go.mod is only fo
 - Raise the version in `src/neo_gps.h`, `library.json`, `library.properties` and CHANGELOG together; merging to main
   creates tag and release `v<VERSION>` (sessions can't push tags).
 - Interfaces are only extended, never renamed (SemVer).
-- Nothing private: `go run ./tools/privcheck .` must be clean; no real places, hosts, IPs or names.
+- Nothing private: no real places, hosts, IPs, names, email addresses or credentials. There is no automatic check,
+  so review every change for this before pushing.
 - **Self-contained**: no dependency on any of the owner's helper repos (kit, setup, lib, r4setup …). Only standard tooling:
   GitHub Actions from the marketplace and distro packages.
 - New targets: add the Ubuntu package to `ci.yml` and the README apt-get line, and a row to the README table.
@@ -36,3 +36,5 @@ tools/privcheck/        Go check for private content (the root go.mod is only fo
 - 2026-11-21: English only (1.2.2 translated everything).
 - 2026-11-21: toolchains from Ubuntu packages via awalsh128/cache-apt-pkgs-action instead of r4d1um/setup (1.2.4):
   an open-source repo must build without the owner's private infrastructure.
+- 2026-11-21: tools/privcheck (and its go.mod and workflow) removed: the repo is a C library only; privacy is
+  checked by review before pushing.

@@ -35,14 +35,18 @@ jobs:
         with:
           packages: >-
             gcc-avr avr-libc binutils-avr
-            gcc-arm-none-eabi libnewlib-arm-none-eabi binutils-arm-none-eabi
+            gcc-arm-none-eabi libnewlib-arm-none-eabi libnewlib-dev binutils-arm-none-eabi
             gcc-aarch64-linux-gnu libc6-dev-arm64-cross
             gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
             gcc-i686-linux-gnu libc6-dev-i386-cross
-          version: "1"
+          # libnewlib-dev (newlib headers) is listed explicitly: as a mere dependency it was missing
+          # after a cache restore (string.h not found on the Cortex-M targets).
+          version: "2"
 
       - name: Toolchain versions
         run: |
+          # fail early with a clear message if a restore left out headers
+          test -f /usr/include/newlib/string.h && test -f /usr/lib/avr/include/string.h
           for c in gcc avr-gcc arm-none-eabi-gcc aarch64-linux-gnu-gcc arm-linux-gnueabihf-gcc i686-linux-gnu-gcc; do
             printf '%-26s %s\n' "$c" "$($c --version | head -1)" | tee -a "$GITHUB_STEP_SUMMARY"
           done
