@@ -27,7 +27,7 @@ jobs:
     permissions:
       contents: write   # only for the release step
     steps:
-      - uses: actions/checkout@v6   # Node 24
+      - uses: actions/checkout@v7   # Node 24
 
       # toolchains from r4d1um/setup: download once, then from the cache
       - uses: actions/cache@v5      # Node 24
