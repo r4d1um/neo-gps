@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-#define NEO_GPS_VERSION "1.2.2"
+#define NEO_GPS_VERSION "1.2.3"
 
 /* ------------------------------------------------------------------------- */
 /* Compile-time configuration (override before the #include or with -D)     */

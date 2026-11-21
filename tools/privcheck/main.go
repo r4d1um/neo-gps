@@ -34,6 +34,7 @@ var rules = []rule{
 	{"GitHub-Token", regexp.MustCompile(`\b(ghp|gho|ghu|ghs|ghr|github_pat)_[A-Za-z0-9_]{20,}`)},
 	{"AWS-Key", regexp.MustCompile(`\bAKIA[0-9A-Z]{16}\b`)},
 	{"private key", regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`)},
+	{"third-party web resource (sends visitors' IPs elsewhere, GDPR)", regexp.MustCompile(`(?i)(href|src)\s*=\s*["']https?://(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|unpkg\.com|ajax\.googleapis\.com)`)},
 	{"plain-text password", regexp.MustCompile(`(?i)\b(password|passwd|passwort|wifi_pass|wlan_pass)\s*[:=]\s*["'][^"'\s]{4,}["']`)},
 }
 
